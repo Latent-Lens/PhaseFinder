@@ -1,2 +1,9 @@
 # Generated e2e artifacts (screenshots, etc.) — keep the dir, ignore the output.
 tests/e2e/results/*
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
