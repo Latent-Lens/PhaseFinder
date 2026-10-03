@@ -7,6 +7,25 @@
 // integrates a scaled Gaussian exactly over each bin.
 
 const EPS = 1e-12;
+const bin_geometry_cache = new WeakMap();
+
+// Histogram edges do not change during a fit. Keep the parameter-independent
+// bin boundaries beside the histogram so every model evaluation only updates
+// its parameter-dependent CDF values.
+export function cached_bin_geometry(edges) {
+  let geometry = bin_geometry_cache.get(edges);
+  if (geometry) return geometry;
+  const count = Math.max(0, edges.length - 1);
+  const left = new Float64Array(count);
+  const right = new Float64Array(count);
+  for (let i = 0; i < count; i += 1) {
+    left[i] = edges[i];
+    right[i] = edges[i + 1];
+  }
+  geometry = { left, right };
+  bin_geometry_cache.set(edges, geometry);
+  return geometry;
+}
 
 /*
 
@@ -143,11 +162,12 @@ Output:
 
 */
 export function gaussianBinMass(edges, area, mu, sigma) {
-  const out = new Array(edges.length - 1);
+  const { left, right } = cached_bin_geometry(edges);
+  const out = new Array(left.length);
   const a = Math.max(0, area);
   const s = Math.max(Math.abs(sigma), EPS);
   for (let i = 0; i < out.length; i += 1) {
-    out[i] = a * Math.max(0, normalCdf(edges[i + 1], mu, s) - normalCdf(edges[i], mu, s));
+    out[i] = a * Math.max(0, normalCdf(right[i], mu, s) - normalCdf(left[i], mu, s));
   }
   return out;
 }

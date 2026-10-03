@@ -136,7 +136,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   // constraint_audit.js still EVALUATES the G2:G1 ratio and reports an
   // implausible one as a diagnostic, it just no longer enforces it.
   ratioMode: "bounded",
-  fitRatioRange: [1.65, 2.25],
+  fitRatioRange: [1.75, 2.25],
   lockedRatio: 2,
   cvMode: "free",
   cvMin: 0.01,
@@ -796,7 +796,7 @@ function build_uncertainty(fit, config, constraintAudit) {
 
 export const dean_jett_fox = {
   id: "dean_jett_fox",
-  version: "1.0.0",
+  version: "1.1.0",
   label: "Dean–Jett–Fox",
   kind: "generative",
   fitScope: "per_sample",
@@ -1050,7 +1050,7 @@ export const dean_jett_fox = {
     return {
       schemaVersion: 1,
       modelId: "dean_jett_fox",
-      modelVersion: "1.0.0",
+      modelVersion: "1.1.0",
       modelLabel: "Dean–Jett–Fox",
       kind: "generative",
       fitScope: "per_sample",

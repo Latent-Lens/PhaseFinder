@@ -54,6 +54,16 @@ _TESTS = r"""() => {
     const regions = { g1: { left: 55, right: 85 }, g2: { left: 120, right: 165 } };
     const fitOptions = { peakRegions: regions };
 
+    await runAsync('PERF-01: parameter-independent bin geometry is cached per histogram', async () => {
+      const first = window.CellCycleGaussianBinMass.cached_bin_geometry(histogram.edges);
+      const second = window.CellCycleGaussianBinMass.cached_bin_geometry(histogram.edges);
+      return {
+        pass: first === second && first.left.length === 256 && first.right[0] === histogram.edges[1]
+          && first.left[255] === histogram.edges[255],
+        detail: JSON.stringify({ bins: first.left.length, sameObject: first === second }),
+      };
+    });
+
     await runAsync('fit worker: a real fit matches the main-thread result within tolerance', async () => {
       registry.clear_registry();
       registry.register_default_models();
@@ -72,6 +82,10 @@ _TESTS = r"""() => {
           && closeEnough(worker.parameters.g1Mean, mainThread.parameters.g1Mean, 1e-6)
           && closeEnough(worker.parameters.g2Mean, mainThread.parameters.g2Mean, 1e-6)
           && worker.expectedCounts.length === mainThread.expectedCounts.length
+          && worker.expectedCounts.every((value, i) => closeEnough(value, mainThread.expectedCounts[i], 1e-10))
+          && Object.keys(worker.parameters).every(key => closeEnough(worker.parameters[key], mainThread.parameters[key], 1e-10))
+          && ['g1', 's', 'g2'].every(key => closeEnough(worker.phaseFractions[key], mainThread.phaseFractions[key], 1e-10))
+          && closeEnough(worker.diagnostics.deviance, mainThread.diagnostics.deviance, 1e-10)
           && worker.components.map((c) => c.id).join(',') === mainThread.components.map((c) => c.id).join(','),
         detail: JSON.stringify({
           workerG1: worker.parameters.g1Mean, mainG1: mainThread.parameters.g1Mean,
@@ -133,20 +147,74 @@ _TESTS = r"""() => {
       };
     });
 
-    await runAsync('fit worker: cancel() cannot interrupt an in-flight fit (documented limitation, not a bug)', async () => {
-      // The fit is fully synchronous with no yield points, and a worker
-      // processes one message to completion before it can even look at a
-      // queued "cancel" message -- so cancel() immediately after starting
-      // cannot stop this fit. If this test starts failing, the LM solver has
-      // gained real yield points and fit_client.js's docs (and this test)
-      // need to be updated to match the new behavior.
-      const { promise, cancel } = window.run_fit_in_worker('dean_jett', histogram, {}, fitOptions);
-      cancel();
-      const result = await promise;
-      return {
-        pass: result.convergenceReason !== 'cancelled' && result.cancelled !== true,
-        detail: JSON.stringify({ convergenceReason: result.convergenceReason, converged: result.converged, cancelled: result.cancelled }),
-      };
+    await runAsync('PERF-01: cancellation terminates active work promptly and a subsequent fit succeeds', async () => {
+      let cancelAt = null;
+      let ticks = 0;
+      const timer = setInterval(() => ticks++, 1);
+      const handle = window.run_fit_in_worker('dean_jett', histogram, {}, {
+        ...fitOptions, onProgress: () => {
+          if (cancelAt === null) { cancelAt = performance.now(); handle.cancel(); }
+        },
+      });
+      let caught;
+      try { await handle.promise; } catch (error) { caught = error; }
+      const latency = performance.now() - cancelAt;
+      clearInterval(timer);
+      const next = await window.run_fit_in_worker('dean_jett', histogram, {}, fitOptions).promise;
+      return { pass: caught?.code === 'FIT_CANCELLED' && cancelAt !== null
+        && latency < 250 && ticks > 0 && next.modelId === 'dean_jett',
+        detail: JSON.stringify({ latencyMs: latency, uiTicks: ticks, code: caught?.code }) };
+    });
+
+    await runAsync('PERF-01: unavailable workers reject instead of fitting on the UI thread', async () => {
+      const NativeWorker = window.Worker;
+      try {
+        window.Worker = class { constructor() { throw new Error('unavailable'); } };
+        // Fresh module has no previously created idle workers.
+        const client = await import('/js/analysis/cell_cycle/fit_client.js?unavailable-test');
+        let caught;
+        try { await client.run_fit_in_worker('dean_jett', histogram, {}, fitOptions).promise; }
+        catch (error) { caught = error; }
+        return { pass: caught?.code === 'FIT_WORKER_UNAVAILABLE', detail: caught?.message };
+      } finally { window.Worker = NativeWorker; }
+    });
+
+    await runAsync('PERF-01: queued cancellation, worker failure and recovery are isolated', async () => {
+      const NativeWorker = window.Worker;
+      const descriptor = Object.getOwnPropertyDescriptor(navigator, 'hardwareConcurrency');
+      const workers = [];
+      class HeldWorker {
+        constructor() { this.listeners = {}; this.terminated = false; workers.push(this); }
+        addEventListener(type, callback) { this.listeners[type] = callback; }
+        postMessage(message) { this.message = message; }
+        terminate() { this.terminated = true; }
+      }
+      try {
+        Object.defineProperty(navigator, 'hardwareConcurrency', { value: 2, configurable: true });
+        window.Worker = HeldWorker;
+        const client = await import('/js/analysis/cell_cycle/fit_client.js?queue-test');
+        const a = client.run_fit_in_worker('dean_jett', histogram, {}, fitOptions);
+        const b = client.run_fit_in_worker('dean_jett', histogram, {}, fitOptions);
+        const c = client.run_fit_in_worker('dean_jett', histogram, {}, fitOptions);
+        const outcomes = Promise.allSettled([a.promise, b.promise, c.promise]);
+        b.cancel();
+        const bounded = workers.length === 1 && !workers[0].terminated;
+        workers[0].listeners.error();
+        const recovery = workers.length === 2 && workers[0].terminated;
+        const active = workers[1];
+        active.listeners.message({ data: { protocolVersion: 1, type: 'result',
+          request_id: active.message.request_id, ok: true, result: { recovered: true } } });
+        const result = await outcomes;
+        a.cancel(); // A completed handle cannot terminate a replacement worker.
+        return { pass: bounded && recovery && !active.terminated
+          && result[0].reason?.code === 'FIT_WORKER_FAILED'
+          && result[1].reason?.code === 'FIT_CANCELLED' && result[2].value?.recovered,
+          detail: JSON.stringify({ bounded, recovery, statuses: result.map(r => r.status) }) };
+      } finally {
+        window.Worker = NativeWorker;
+        if (descriptor) Object.defineProperty(navigator, 'hardwareConcurrency', descriptor);
+        else delete navigator.hardwareConcurrency;
+      }
     });
 
     await runAsync('pool size: scales as a fraction of logical cores, always leaving one for the UI', async () => {
@@ -173,6 +241,32 @@ _TESTS = r"""() => {
         pass: wrong.length === 0 && fallbackOk && fractionOk && liveOk,
         detail: JSON.stringify({ wrong, fallbackOk, fractionOk, live: fit_pool_size() }),
       };
+    });
+
+    await runAsync('QC-08: peak-tracking worker matches direct QC, reports progress, and cancels', async () => {
+      const n = 50000;
+      const data = { eventCount: n, pnr: { Time: 100000 }, channels: {
+        Time: Float64Array.from({ length: n }, (_, i) => i / 10),
+        DNA_A: Float64Array.from({ length: n }, (_, i) => 180 + 20 * Math.sin(i / 47)),
+      } };
+      const options = { method: 'peak-tracking', channels: ['DNA_A'] };
+      const expected = window.PeakTrackingTimeQC.runPeakTrackingTimeQC(data, null, options);
+      const progress = [];
+      const handle = window.run_peak_tracking_time_qc_in_worker(data, null, options,
+        { onProgress: event => progress.push(event) });
+      const actual = await handle.promise;
+      const cancelled = window.run_peak_tracking_time_qc_in_worker(data, null, options);
+      cancelled.cancel();
+      let cancelledCode = null;
+      try { await cancelled.promise; } catch (error) { cancelledCode = error.code; }
+      return { pass: actual.retainedEventCount === expected.retainedEventCount
+        && actual.percentRemoved === expected.percentRemoved
+        && actual.timeQCMask.every((value, i) => value === expected.timeQCMask[i])
+        && progress.some(event => event.stage === 'Tracking population peaks')
+        && progress.at(-1)?.completed === progress.at(-1)?.total
+        && cancelledCode === 'FIT_CANCELLED',
+      detail: JSON.stringify({ retained: actual.retainedEventCount,
+        progress: progress.map(event => event.stage), cancelledCode }) };
     });
 
     return results;

@@ -359,6 +359,22 @@ _SHARED_HELPERS = r"""() => {
     };
   });
 
+  run('GATE-03: transient singular Jacobian does not mark an identified final fit weak', () => {
+    const fit = lm.runLevenbergMarquardt({
+      initialParameters: [0, 0], freeIndices: [0, 1],
+      residualFn: ([x, y]) => [x + y - 1, x * x + 2 * y * y - 2],
+      options: { maxIterations: 100, tolerance: 1e-10, stepTolerance: 1e-9 },
+    });
+    const audit = fit.optimizerDiagnostics;
+    return {
+      pass: fit.converged && fit.sse < 1e-20
+        && audit.maximumJacobianCondition === Infinity
+        && Number.isFinite(audit.lastJacobianCondition)
+        && audit.weaklyIdentified === false,
+      detail: JSON.stringify({ converged: fit.converged, sse: fit.sse, audit }),
+    };
+  });
+
   run('LM: an upper-bound-pinned start moves inward to the true feasible optimum', () => {
     // Regression for the false-convergence-at-bounds bug: starts clipped to the
     // upper bound (1), but the true minimum of (value - 0.5)^2 lies inward at

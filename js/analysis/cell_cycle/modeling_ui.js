@@ -12,6 +12,7 @@
 
 import {
   cell_cycle_model_select,
+  cell_cycle_fit_group,
   cell_cycle_fit_current_button,
   cell_cycle_fit_all_button,
   cell_cycle_fit_status,
@@ -21,6 +22,7 @@ import {
   cell_cycle_resampling_button,
   cell_cycle_resampling_status,
   peak_regions_apply_all_button,
+  sidebar_modeling_scroll_affordance,
 } from "../../ui/dom.js";
 import {
   plottable_rows,
@@ -305,28 +307,11 @@ function has_model_selected() {
   return Boolean(selected_model_id());
 }
 
-// AD-2/SCI-05: #cell_cycle_fit_status (role="status", immediately above
-// #cell_cycle_fit_result in the DOM) and #cell_cycle_fit_result
-// (role="status" aria-live="polite") both live-announce. At the one call site
-// where a single fit event updates both for the same outcome
-// (on_fit_current_click), that is a duplicate announcement of the same event
-// to assistive tech -- annoying, not just redundant, since AT reads both in
-// full. `announce: false` suppresses just this element's announcement for
-// that update (the text/visual state still change normally, and the *next*
-// independent update to this element -- e.g. "Bin count changed" -- announces
-// as usual) by removing the role immediately before the mutation and
-// restoring it on a later task, after the mutation has already happened with
-// no live region present to announce it.
-function set_fit_status(message, isError = false, { announce = true } = {}) {
+function set_fit_status(message, isError = false) {
   if (!cell_cycle_fit_status) return;
-  const previousRole = cell_cycle_fit_status.getAttribute("role");
-  if (!announce && previousRole) cell_cycle_fit_status.removeAttribute("role");
   cell_cycle_fit_status.textContent = message || "";
   cell_cycle_fit_status.hidden = !message;
   cell_cycle_fit_status.classList.toggle("cell_cycle_fit_not_converged", Boolean(isError));
-  if (!announce && previousRole) {
-    window.setTimeout(() => cell_cycle_fit_status.setAttribute("role", previousRole), 0);
-  }
 }
 
 function set_controls_disabled(disabled) {
@@ -402,6 +387,36 @@ function render_result(result) {
   const warningList = warnings.length
     ? `<ul class="cell_cycle_fit_warning_list">${warnings.map((warning) => `<li>${escape_html(warning.message)}</li>`).join("")}</ul>`
     : "";
+  const resamp = result.resampling;
+  let resamplingBlock = "";
+  if (resamp) {
+    const pf = resamp.models?.[result.modelId]?.phaseFractions;
+    const fmtIntv = (intv) => (intv && Number.isFinite(intv.lower) && Number.isFinite(intv.upper))
+      ? `[${(intv.lower * 100).toFixed(1)}%, ${(intv.upper * 100).toFixed(1)}%]`
+      : "—";
+    const intervalsHtml = pf
+      ? `<dl class="cell_cycle_fit_fractions cc_resampling_intervals">
+          <div class="cell_cycle_fit_fraction_row"><dt>G1 CI</dt><dd>${fmtIntv(pf.g1)}</dd></div>
+          <div class="cell_cycle_fit_fraction_row"><dt>S CI</dt><dd>${fmtIntv(pf.s)}</dd></div>
+          <div class="cell_cycle_fit_fraction_row"><dt>G2/M CI</dt><dd>${fmtIntv(pf.g2)}</dd></div>
+        </dl>`
+      : "";
+    const sel = resamp.selection;
+    const selHtml = sel?.pointEstimateWinner
+      ? `<p class="cc_resampling_selection">Model selection: ${escape_html(model_label(sel.pointEstimateWinner))} won ${(sel.winnerFrequency * 100).toFixed(1)}% of replicates (${sel.stable ? "stable" : "unstable"}).</p>`
+      : "";
+    const defHtml = resamp.definition
+      ? `<p class="cc_resampling_definition">${escape_html(resamp.definition)}</p>`
+      : "";
+    resamplingBlock = `
+      <div class="cell_cycle_fit_resampling_block">
+        <h4 class="cc_resampling_heading">Resampling Uncertainty (${escape_html(resamp.intervalMethod || "bootstrap")})</h4>
+        ${intervalsHtml}
+        ${selHtml}
+        ${defHtml}
+      </div>
+    `;
+  }
   const fractions = reporting.reportable
     ? `<dl class="cell_cycle_fit_fractions">
         <div class="cell_cycle_fit_fraction_row"><dt>G1</dt><dd>${render_fraction_value(result, reporting.phaseFractions?.g1)}</dd></div>
@@ -412,17 +427,13 @@ function render_result(result) {
   // Goodness of fit (reduced deviance, the chi-square analogue). ~1 is a good
   // fit; well above 1 means the model does not fully explain the counts. Shown
   // so the user -- not the tool -- judges whether to trust the fractions.
-  // AD-2: moved out of a title="" tooltip (keyboard/touch-unreachable) into a
-  // visible, focusable <details>/<summary> disclosure -- the summary carries
-  // the qualifier treatment and base.css's :where(...,[tabindex]):focus-visible
-  // ring needs the explicit tabindex="0" since <summary> isn't in that
-  // selector's tag list.
+  // Keep the fit-quality explanation visible in a disclosure.
   const gof = result.goodnessOfFit;
   const gofPoor = Number.isFinite(gof) && gof > 2;
   const goodnessQualifier = gofPoor ? "cc_qualifier cc_qualifier--warn" : "cc_qualifier";
   const goodnessBlock = Number.isFinite(gof)
     ? `<details class="cell_cycle_fit_goodness_disclosure">
-        <summary class="cc_goodness_detail ${goodnessQualifier}" tabindex="0">Fit quality: ${gof.toFixed(2)}${gofPoor ? " (poor)" : ""}</summary>
+        <summary class="cc_goodness_detail ${goodnessQualifier}">Fit quality: ${gof.toFixed(2)}${gofPoor ? " (poor)" : ""}</summary>
         <p class="cc_goodness_detail_body">Reduced deviance (chi-square analogue): ~1 is a good fit, well above 1 means the model does not fully explain the counts.</p>
       </details>`
     : "";
@@ -430,7 +441,6 @@ function render_result(result) {
 
   cell_cycle_fit_result.hidden = false;
   cell_cycle_fit_result.innerHTML = `
-    <h3 class="visually_hidden">Cell-cycle fit result</h3>
     <div class="cell_cycle_fit_result_header">
       <span>${escape_html(result.modelLabel ?? model_label(result.modelId))}</span>
     </div>
@@ -438,6 +448,7 @@ function render_result(result) {
     ${goodnessBlock}
     ${fractions}
     ${selectedNote}
+    ${resamplingBlock}
     <p class="cell_cycle_fit_warnings ${warningsQualifier}">${
       warnings.length ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"}` : "No warnings."
     }</p>
@@ -475,6 +486,7 @@ function refresh_panel() {
     if (cell_cycle_domain_sensitivity_button) cell_cycle_domain_sensitivity_button.hidden = true;
     if (cell_cycle_resampling_button) cell_cycle_resampling_button.hidden = true;
     render_result(null);
+    update_modeling_scroll_affordance();
     return;
   }
 
@@ -527,6 +539,8 @@ function refresh_panel() {
     cell_cycle_resampling_button.hidden = !resamplable;
     cell_cycle_resampling_button.disabled = !resamplable;
   }
+  update_modeling_scroll_affordance();
+  window.requestAnimationFrame(update_modeling_scroll_affordance);
 }
 
 async function on_fit_current_click() {
@@ -557,14 +571,9 @@ async function on_fit_current_click() {
   try {
     const result = await fit_cell_cycle_model(row, modelId);
     render_result(result);
-    // announce: false -- #cell_cycle_fit_result just announced this same fit
-    // outcome (role="status" aria-live="polite" via render_result() above); a
-    // second role="status" region reporting the identical event would be a
-    // duplicate announcement, not new information.
     set_fit_status(
       `${model_label(modelId)} fit for ${row.name}: ${result.converged ? "converged" : "did not converge"}.`,
       !result.converged,
-      { announce: false },
     );
     set_status_bar(`Cell-cycle model fit for ${row.name}${degraded_qc_names([row]).length ? " with an approved QC waiver" : ""}.`, false, null, progress_operation);
   } catch (error) {
@@ -622,6 +631,48 @@ async function on_check_domain_sensitivity_click() {
   } catch (error) {
     set_domain_sensitivity_status(error.message, true);
     set_status_bar(`Domain sensitivity check failed: ${error.message}`, true, null, progress_operation, error);
+  } finally {
+    hide_progress(300, progress_operation);
+    busy = false;
+    refresh_panel();
+  }
+}
+
+// UNC-01: the opt-in caller for assess_resampling_uncertainty() (modeling_state.js).
+// Deliberately a separate, explicit action rather than anything Fit Current/Fit
+// All trigger themselves -- a resampling sweep is a full refit per model per
+// replicate (up to a couple hundred), so folding it into the hot fit path would
+// multiply every interactive fit's latency by hundreds of seconds.
+async function on_check_resampling_click() {
+  if (busy) return;
+  const row = active_peak_review_row();
+  if (!row) return;
+  const state = get_state(row.name);
+  const result = get_active_model_result(state);
+  if (!result) {
+    set_resampling_status("No current fit result to check — fit this sample first.", true);
+    return;
+  }
+
+  busy = true;
+  set_controls_disabled(true);
+  const progress_operation = show_progress(`Assessing resampling uncertainty for ${row.name}`);
+  try {
+    const updated = await assess_resampling_uncertainty(row, result, {
+      onProgress: ({ completed, total }) => {
+        set_status_bar(`Resampling ${row.name}: ${completed}/${total} replicates...`, false, null, progress_operation);
+      },
+    });
+    render_result(updated);
+    const bundle = updated.resampling;
+    const isInvalid = updated.validForReporting === false || updated.invalid === true;
+    const hasWarnings = (bundle?.warnings?.length ?? 0) > 0;
+    const statusMsg = `Resampling uncertainty: ${bundle?.replicatesSucceeded ?? 0}/${bundle?.replicatesRequested ?? 0} replicates succeeded${hasWarnings ? ` (${bundle.warnings.length} warning${bundle.warnings.length === 1 ? "" : "s"})` : ""}.`;
+    set_resampling_status(statusMsg, isInvalid || hasWarnings);
+    set_status_bar(`Resampling uncertainty assessed for ${row.name}.`, isInvalid, null, progress_operation);
+  } catch (error) {
+    set_resampling_status(error.message, true);
+    set_status_bar(`Resampling uncertainty check failed: ${error.message}`, true, null, progress_operation, error);
   } finally {
     hide_progress(300, progress_operation);
     busy = false;
@@ -1334,6 +1385,33 @@ function parse_timepoint(raw, fallbackIndex) {
   return match ? Number(match[0]) : fallbackIndex;
 }
 
+export function update_modeling_scroll_affordance() {
+  if (!sidebar_modeling_scroll_affordance || !cell_cycle_fit_group) return;
+  const sidebarSection = document.querySelector("#sidebar_modeling_section");
+  const scrollContainer = document.querySelector(".sidebar_content");
+  if (!sidebarSection || sidebarSection.hidden || !scrollContainer) {
+    sidebar_modeling_scroll_affordance.hidden = true;
+    return;
+  }
+  const containerRect = scrollContainer.getBoundingClientRect();
+  if (containerRect.height === 0) {
+    sidebar_modeling_scroll_affordance.hidden = true;
+    return;
+  }
+  const target = cell_cycle_fit_current_button || cell_cycle_fit_group;
+  const targetRect = target.getBoundingClientRect();
+  const isBelowFold = targetRect.bottom > containerRect.bottom + 4;
+  sidebar_modeling_scroll_affordance.hidden = !isBelowFold;
+}
+
+function on_scroll_affordance_click() {
+  const target = cell_cycle_fit_current_button || cell_cycle_fit_group;
+  if (target && typeof target.scrollIntoView === "function") {
+    target.scrollIntoView({ behavior: "auto", block: "nearest" });
+    update_modeling_scroll_affordance();
+  }
+}
+
 export function init_modeling_ui() {
   if (initialized) return;
   initialized = true;
@@ -1343,6 +1421,8 @@ export function init_modeling_ui() {
   if (cell_cycle_fit_all_button) cell_cycle_fit_all_button.addEventListener("click", on_fit_all_click);
   if (peak_regions_apply_all_button) peak_regions_apply_all_button.addEventListener("click", on_apply_all_click);
   if (cell_cycle_domain_sensitivity_button) cell_cycle_domain_sensitivity_button.addEventListener("click", on_check_domain_sensitivity_click);
+  if (cell_cycle_resampling_button) cell_cycle_resampling_button.addEventListener("click", on_check_resampling_click);
+  if (sidebar_modeling_scroll_affordance) sidebar_modeling_scroll_affordance.addEventListener("click", on_scroll_affordance_click);
 
   init_qc_critical_review({
     active_row: active_peak_review_row,
@@ -1351,6 +1431,12 @@ export function init_modeling_ui() {
     // immediate unattended fit would blur the acknowledgement into the result.
     on_acknowledged: () => refresh_panel(),
   });
+
+  const scrollContainer = document.querySelector(".sidebar_content");
+  if (scrollContainer) {
+    scrollContainer.addEventListener("scroll", update_modeling_scroll_affordance, { passive: true });
+  }
+  window.addEventListener("resize", update_modeling_scroll_affordance);
 
   document.addEventListener("fcs-selection-change", refresh_panel);
   document.addEventListener("cell-cycle-focus-change", refresh_panel);

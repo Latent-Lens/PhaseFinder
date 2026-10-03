@@ -299,6 +299,88 @@ _CLOCCS_TESTS = r"""async () => {
     return { pass: entry.fitScope === 'joint_series' && entry.label === 'CLOCCS (Unverified)' && refused, detail: JSON.stringify({ fitScope: entry.fitScope, label: entry.label }) };
   });
 
+  // ── WORKER-01 client reliability tests ─────────────────────────────────────
+  await runAsync('WORKER-01: worker error terminates worker and retry uses a fresh worker with settled outcome', async () => {
+    const Client = window.CLOCCSClient;
+    Client.terminate_cloccs_worker();
+
+    const handle1 = Client.run_cloccs_fit(series, fitConfig);
+    const worker1 = Client.get_cloccs_worker();
+    if (!worker1) {
+      return { pass: false, detail: 'Failed to create worker1' };
+    }
+
+    worker1.dispatchEvent(new ErrorEvent('error', { message: 'Injected worker crash' }));
+
+    let rejected1 = false;
+    try {
+      await handle1.promise;
+    } catch (_) {
+      rejected1 = true;
+    }
+    if (!rejected1) {
+      return { pass: false, detail: 'handle1 promise did not reject on worker error' };
+    }
+
+    const deadWorker = Client.get_cloccs_worker();
+    if (deadWorker !== null) {
+      return { pass: false, detail: 'worker was not cleared after error' };
+    }
+
+    const handle2 = Client.run_cloccs_fit(series, fitConfig);
+    const worker2 = Client.get_cloccs_worker();
+    if (!worker2 || worker2 === worker1) {
+      return { pass: false, detail: 'retry did not allocate a fresh worker instance' };
+    }
+
+    handle2.cancel();
+    const result2 = await handle2.promise;
+    const settled2 = result2 && (result2.cancelled || result2.theta);
+    Client.terminate_cloccs_worker();
+
+    return {
+      pass: rejected1 && deadWorker === null && worker2 !== worker1 && Boolean(settled2),
+      detail: JSON.stringify({ rejected1, freshWorker: worker2 !== worker1, settled2 }),
+    };
+  });
+
+  await runAsync('WORKER-01: synchronous postMessage failure removes pending request without leaking', async () => {
+    const Client = window.CLOCCSClient;
+    Client.terminate_cloccs_worker();
+
+    const warmup = Client.run_cloccs_fit(series, fitConfig);
+    warmup.cancel();
+    await warmup.promise;
+
+    const worker = Client.get_cloccs_worker();
+    const pendingBefore = Client.get_cloccs_pending_count();
+
+    const originalPostMessage = worker.postMessage;
+    worker.postMessage = function() {
+      throw new DOMException('Failed to execute postMessage: object could not be cloned', 'DataCloneError');
+    };
+
+    let rejected = false;
+    let errName = '';
+    try {
+      const handle = Client.run_cloccs_fit(series, fitConfig);
+      await handle.promise;
+    } catch (err) {
+      rejected = true;
+      errName = err.name || err.message;
+    } finally {
+      worker.postMessage = originalPostMessage;
+    }
+
+    const pendingAfter = Client.get_cloccs_pending_count();
+    Client.terminate_cloccs_worker();
+
+    return {
+      pass: rejected && pendingBefore === 0 && pendingAfter === 0,
+      detail: JSON.stringify({ rejected, errName, pendingBefore, pendingAfter }),
+    };
+  });
+
   return results;
 }"""
 

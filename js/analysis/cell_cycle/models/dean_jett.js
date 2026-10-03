@@ -80,7 +80,7 @@ const PARAMETER_COUNT = 9;
 
 export const DEFAULT_CONFIG = Object.freeze({
   ratioMode: "bounded", // "free" | "bounded" | "locked" -- constrains mu2/mu1, not part of the emission model itself
-  fitRatioRange: [1.65, 2.25],
+  fitRatioRange: [1.75, 2.25],
   lockedRatio: 2,
   cvMode: "free", // "free" | "equal" -- "equal" ties CV2 = CV1
   cvMin: 0.01,
@@ -449,7 +449,7 @@ function build_uncertainty(fit, config, constraintAudit) {
 
 export const dean_jett = {
   id: "dean_jett",
-  version: "1.0.0",
+  version: "1.1.0",
   label: "Dean–Jett",
   kind: "generative",
   fitScope: "per_sample",
@@ -631,7 +631,7 @@ export const dean_jett = {
     return {
       schemaVersion: 1,
       modelId: "dean_jett",
-      modelVersion: "1.0.0",
+      modelVersion: "1.1.0",
       modelLabel: "Dean–Jett",
       kind: "generative",
       fitScope: "per_sample",

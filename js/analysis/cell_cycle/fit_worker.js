@@ -11,6 +11,7 @@
 //                values, histogram, domain, binCount, peakRegions, replicates,
 //                seed, intervalLevel, intervalMethod, perturbations }
 //        { type: "cancel", request_id }
+//        { type: "peak_tracking_time_qc", request_id, dataset, structuralMask, options }
 //   out: { type: "progress", request_id, iteration, maxIterations, sse }
 //        { type: "progress", request_id, completed, total, succeeded, failed }
 //        { type: "result", request_id, ok: true, result }
@@ -41,6 +42,7 @@
 import { register_default_models, get_model } from "./model_registry.js";
 import { analyzeDomainSensitivity } from "./domain_sensitivity.js";
 import { resampleUncertainty } from "./resampling.js";
+import { runPeakTrackingTimeQC } from "../qc/peak_tracking_time_qc.js";
 import { is_worker_message, worker_message } from "../../util/worker_protocol.js";
 
 register_default_models();
@@ -70,12 +72,15 @@ function build_resampling_fit_fn(models) {
     try {
       const rawVariantResult = entry.fit({ histogram, peakRegions, config });
       const normalized = entry.normalizeResult(rawVariantResult);
+      const isSuccessful = normalized.kind === "decomposition"
+        ? normalized.decompositionCompleted !== false
+        : normalized.converged === true;
       return {
         modelId: normalized.modelId ?? modelId,
         comparisonGroup: normalized.comparisonGroup ?? entry.comparisonGroup ?? null,
         phaseFractions: normalized.phaseFractions ?? null,
         bic: Number.isFinite(normalized.diagnostics?.bic) ? normalized.diagnostics.bic : null,
-        converged: normalized.converged === true,
+        converged: isSuccessful,
         parameters: normalized.parameters ?? null,
       };
     } catch (thrown) {
@@ -90,7 +95,7 @@ function build_resampling_fit_fn(models) {
 self.addEventListener("message", (event) => {
   const message = event.data || {};
 
-  if (!is_worker_message(message, ["fit", "cancel", "domain_sensitivity", "resample_uncertainty"])) {
+  if (!is_worker_message(message, ["fit", "cancel", "domain_sensitivity", "resample_uncertainty", "peak_tracking_time_qc"])) {
     self.postMessage(worker_message("result", Number.isInteger(message.request_id) ? message.request_id : -1, {
       ok: false,
       code: "WORKER_PROTOCOL_MISMATCH",
@@ -101,6 +106,22 @@ self.addEventListener("message", (event) => {
 
   if (message.type === "cancel") {
     cancelled_requests.add(message.request_id);
+    return;
+  }
+
+  if (message.type === "peak_tracking_time_qc") {
+    const { request_id, dataset, structuralMask, options } = message;
+    try {
+      const result = runPeakTrackingTimeQC(dataset, structuralMask, {
+        ...options,
+        onProgress: (progress) => self.postMessage(worker_message("progress", request_id, progress)),
+      });
+      self.postMessage(worker_message("result", request_id, { ok: true, result }));
+    } catch (error) {
+      self.postMessage(worker_message("result", request_id, {
+        ok: false, code: error.code || "TIME_QC_WORKER_FAILED", error: error.message || String(error),
+      }));
+    }
     return;
   }
 

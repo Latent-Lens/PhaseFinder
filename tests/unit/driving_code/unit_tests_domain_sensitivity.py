@@ -361,15 +361,15 @@ _DOMAIN_TESTS = r"""async () => {
     };
   });
 
-  await run('DOMAIN-01: a concurrent newer fit invalidates an in-flight sensitivity assessment', async () => {
+  await run('DOMAIN-01: changed peak inputs invalidate an in-flight sensitivity assessment', async () => {
     const modelingState = window.CellCycleModelingState;
     const row = buildDomainSensitivityRow();
     const result = await modelingState.fit_cell_cycle_model(row, 'dean_jett');
 
     const pending = modelingState.assess_domain_sensitivity(row, result);
-    // A single fit is far cheaper than the 12-fit sweep just dispatched, so this
-    // real refit reliably lands on the row before the sweep's promise settles.
-    await modelingState.fit_cell_cycle_model(row, 'dean_jett');
+    // Invalidate synchronously before worker messages can settle the sweep.
+    // Two concurrent workers have no guaranteed completion order.
+    modelingState.update_peak_regions(row, { g1: { left: 54, right: 86 }, g2: { left: 119, right: 161 } });
 
     let caught = null;
     try {
@@ -379,7 +379,7 @@ _DOMAIN_TESTS = r"""async () => {
     }
     return {
       pass: !!caught && caught.code === 'FIT_INPUTS_CHANGED' && !result.domainSensitivity,
-      detail: caught ? `${caught.name}: ${caught.message}` : 'resolved despite a concurrent newer fit',
+      detail: caught ? `${caught.name}: ${caught.message}` : 'resolved despite changed peak inputs',
     };
   });
 

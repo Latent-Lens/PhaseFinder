@@ -50,7 +50,7 @@
     import * as CellCyclePoisson from "/js/analysis/math/poisson.js";
     import * as CellCycleModelShared from "/js/analysis/cell_cycle/models/shared.js";
     import * as CellCycleModelRegistry from "/js/analysis/cell_cycle/model_registry.js";
-    import { run_fit_in_worker, fit_pool_size, compute_pool_size } from "/js/analysis/cell_cycle/fit_client.js";
+    import { run_fit_in_worker, run_peak_tracking_time_qc_in_worker, fit_pool_size, compute_pool_size } from "/js/analysis/cell_cycle/fit_client.js";
     import * as CellCyclePeakDetection from "/js/analysis/cell_cycle/peak_detection.js";
     import * as CellCyclePeakRegions from "/js/analysis/cell_cycle/peak_regions.js";
     import * as CellCycleUncertainty from "/js/analysis/cell_cycle/uncertainty.js";
@@ -73,10 +73,12 @@
     import * as TimeQCDiagnosticPlot from "/js/analysis/qc/time_qc_diagnostic_plot.js";
     import * as CLOCCS from "/js/analysis/cell_cycle/models/cloccs.js";
     import * as CLOCCSSynthetic from "/js/analysis/cell_cycle/models/cloccs_synthetic.js";
+    import * as CLOCCSClient from "/js/analysis/cell_cycle/cloccs_client.js";
     import * as NelderMead from "/js/analysis/math/nelder_mead.js";
     import * as PlotRender from "/js/plotting/render.js";
     import * as PeakFocusRange from "/js/plotting/peak_focus_range.js";
     import * as PlotData from "/js/plotting/data.js";
+    import * as HistogramPrep from "/js/plotting/histogram_prep.js";
     import * as AxisRangeModal from "/js/plotting/axis_modal.js";
     import * as BrowserCompatibility from "/js/ui/compatibility.js";
     import * as CellCycleModelingUI from "/js/analysis/cell_cycle/modeling_ui.js";
@@ -121,6 +123,7 @@
     window.CellCycleModelShared = CellCycleModelShared;
     window.CellCycleModelRegistry = CellCycleModelRegistry;
     window.run_fit_in_worker = run_fit_in_worker;
+    window.run_peak_tracking_time_qc_in_worker = run_peak_tracking_time_qc_in_worker;
     window.FitClientPool = { fit_pool_size, compute_pool_size };
     window.CellCyclePeakDetection = CellCyclePeakDetection;
     window.CellCyclePeakRegions = CellCyclePeakRegions;
@@ -143,10 +146,12 @@
     window.TimeQCDiagnosticPlot = TimeQCDiagnosticPlot;
     window.CLOCCS = CLOCCS;
     window.CLOCCSSynthetic = CLOCCSSynthetic;
+    window.CLOCCSClient = CLOCCSClient;
     window.NelderMead = NelderMead;
     window.PlotRender = PlotRender;
     window.PeakFocusRange = PeakFocusRange;
     window.PlotData = PlotData;
+    window.HistogramPrep = HistogramPrep;
     window.CellCycleModelingUI = CellCycleModelingUI;
     window.CellCycleExport = CellCycleExport;
     window.CellCycleColumns = CellCycleColumns;

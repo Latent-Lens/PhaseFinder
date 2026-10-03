@@ -351,6 +351,236 @@ _TESTS = r"""async () => {
     return { pass, detail: message };
   });
 
+  await runAsync('assess_resampling_uncertainty rejects a result without modelId', async () => {
+    let failed = false;
+    try {
+      await modelingState.assess_resampling_uncertainty({}, {});
+    } catch (e) {
+      failed = /requires a contracted fit result/i.test(e.message);
+    }
+    return { pass: failed, detail: `failed=${failed}` };
+  });
+
+  await runAsync('assess_resampling_uncertainty evaluates bootstrap intervals and records provenance on result', async () => {
+    const row = buildBimodalRow('modeling-state-resampling', 1200);
+    pipeline.clear_state(row.name);
+    pipeline.apply_structural_qc(row);
+    pipeline.apply_dna_histogram(row, { binCount: 64, range: [0, 220] });
+    modelingState.detect_peak_regions(row);
+    modelingState.accept_peak_regions(row);
+    const fitResult = await modelingState.fit_cell_cycle_model(row, 'watson_pragmatic');
+
+    const updated = await modelingState.assess_resampling_uncertainty(row, fitResult, {
+      replicates: 5,
+      seed: 12345,
+    });
+
+    const res = updated.resampling;
+    const prov = updated.provenance?.resampling;
+    const pf = res?.models?.watson_pragmatic?.phaseFractions;
+
+    const pass = res
+      && res.replicatesRequested === 5
+      && res.replicatesSucceeded > 0
+      && prov?.method === res.method
+      && prov?.seed === 12345
+      && typeof prov?.definition === 'string'
+      && Number.isFinite(pf?.g1?.lower)
+      && Number.isFinite(pf?.g1?.upper)
+      && Number.isFinite(pf?.s?.lower)
+      && Number.isFinite(pf?.s?.upper);
+
+    return {
+      pass: Boolean(pass),
+      detail: JSON.stringify({
+        succeeded: res?.replicatesSucceeded,
+        definition: prov?.definition,
+        g1: pf?.g1,
+        s: pf?.s,
+      }),
+    };
+  });
+
+  function buildUnimodalRow(name, events, mean = 70, sigma = 4.2) {
+    const otherMean = Math.abs(mean - 70) < 10 ? 140 : 70;
+    const otherSigma = Math.abs(mean - 70) < 10 ? 8.4 : 4.2;
+    const total = events + 25;
+    const dna = new Float64Array(total);
+    let seed = 12345;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    const gaussian = () => {
+      const u1 = Math.max(1e-9, rand());
+      const u2 = rand();
+      return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    };
+    for (let i = 0; i < events; i += 1) dna[i] = mean + gaussian() * sigma;
+    for (let i = 0; i < 25; i += 1) dna[events + i] = otherMean + gaussian() * otherSigma;
+    return {
+      id: `${name}-id`,
+      name,
+      data: {
+        channel_key: 'DNA-A',
+        eventCount: total,
+        channels: { DNA_A: dna, DNA_H: null, DNA_W: null, FSC_A: null, SSC_A: null, Time: null },
+        pnr: { DNA_A: 300, DNA_H: null, DNA_W: null, FSC_A: null, SSC_A: null, Time: null },
+        masks: { structural: null, timeQC: null, scatter: null, singlet: null, final: null },
+      },
+    };
+  }
+
+  await runAsync('D2/AMBIG-01: pure-G1 lone-peak fixture produces single_peak_unassigned, blocks fit, and unblocks when assigned G1', async () => {
+    const row = buildUnimodalRow('lone-peak-g1', 2000, 70, 4.2);
+    pipeline.clear_state(row.name);
+    pipeline.apply_structural_qc(row);
+    pipeline.apply_dna_histogram(row, { binCount: 128, range: [0, 220] });
+
+    const detection = modelingState.detect_peak_regions(row);
+    const unassignedState = pipeline.get_state(row.name);
+    const unassignedStatus = detection.status === 'single_peak_unassigned';
+    const regionsNull = unassignedState.modeling.peakSelection.regions === null;
+
+    let fitBlocked = false;
+    try {
+      await modelingState.fit_cell_cycle_model(row, 'watson_pragmatic');
+    } catch (e) {
+      fitBlocked = true;
+    }
+
+    modelingState.assign_lone_peak_identity(row, 'g1');
+    const assignedState = pipeline.get_state(row.name);
+    const hasAssignedIdentity = assignedState.modeling.peakSelection.userAssignedIdentity === 'g1';
+    const hasRegions = assignedState.modeling.peakSelection.regions !== null;
+    const g1Center = 0.5 * (assignedState.modeling.peakSelection.regions.g1.left + assignedState.modeling.peakSelection.regions.g1.right);
+    const g2Center = 0.5 * (assignedState.modeling.peakSelection.regions.g2.left + assignedState.modeling.peakSelection.regions.g2.right);
+
+    const fitResult = await modelingState.fit_cell_cycle_model(row, 'watson_pragmatic');
+    const hasWarning = fitResult.warnings.some((w) => w.code === 'regions_ambiguous_single_peak');
+    const resultIdentity = fitResult.userAssignedPeakIdentity === 'g1';
+    const reportable = fitResult.validForReporting === true;
+
+    const pass = unassignedStatus
+      && regionsNull
+      && fitBlocked
+      && hasAssignedIdentity
+      && hasRegions
+      && Math.abs(g1Center - 70) < 5
+      && Math.abs(g2Center - 140) < 10
+      && hasWarning
+      && resultIdentity
+      && reportable;
+
+    return {
+      pass: Boolean(pass),
+      detail: JSON.stringify({
+        unassignedStatus, regionsNull, fitBlocked, hasAssignedIdentity,
+        g1Center, g2Center, hasWarning, resultIdentity, reportable,
+      }),
+    };
+  });
+
+  await runAsync('D2/AMBIG-01: G2-shifted lone-peak fixture produces single_peak_unassigned, blocks fit, and unblocks when assigned G2', async () => {
+    const row = buildUnimodalRow('lone-peak-g2', 2000, 140, 8.4);
+    pipeline.clear_state(row.name);
+    pipeline.apply_structural_qc(row);
+    pipeline.apply_dna_histogram(row, { binCount: 128, range: [0, 220] });
+
+    const detection = modelingState.detect_peak_regions(row);
+    const unassignedState = pipeline.get_state(row.name);
+    const unassignedStatus = detection.status === 'single_peak_unassigned';
+    const regionsNull = unassignedState.modeling.peakSelection.regions === null;
+
+    let fitBlocked = false;
+    try {
+      await modelingState.fit_cell_cycle_model(row, 'watson_pragmatic');
+    } catch (e) {
+      fitBlocked = true;
+    }
+
+    modelingState.assign_lone_peak_identity(row, 'g2');
+    const assignedState = pipeline.get_state(row.name);
+    const hasAssignedIdentity = assignedState.modeling.peakSelection.userAssignedIdentity === 'g2';
+    const g1Center = 0.5 * (assignedState.modeling.peakSelection.regions.g1.left + assignedState.modeling.peakSelection.regions.g1.right);
+    const g2Center = 0.5 * (assignedState.modeling.peakSelection.regions.g2.left + assignedState.modeling.peakSelection.regions.g2.right);
+
+    const fitResult = await modelingState.fit_cell_cycle_model(row, 'watson_pragmatic');
+    const hasWarning = fitResult.warnings.some((w) => w.code === 'regions_ambiguous_single_peak');
+    const resultIdentity = fitResult.userAssignedPeakIdentity === 'g2';
+    const reportable = fitResult.validForReporting === true;
+
+    const pass = unassignedStatus
+      && regionsNull
+      && fitBlocked
+      && hasAssignedIdentity
+      && Math.abs(g2Center - 140) < 10
+      && Math.abs(g1Center - 70) < 5
+      && hasWarning
+      && resultIdentity
+      && reportable;
+
+    return {
+      pass: Boolean(pass),
+      detail: JSON.stringify({
+        unassignedStatus, regionsNull, fitBlocked, hasAssignedIdentity,
+        g1Center, g2Center, hasWarning, resultIdentity, reportable,
+      }),
+    };
+  });
+
+  await runAsync('D2/AMBIG-01: session TOML serialize and restore preserves user-assigned peak identity and status', async () => {
+    const toml = await import('/js/session/toml_io.js');
+    const row = buildUnimodalRow('session-lone-peak', 2000, 70, 4.2);
+    pipeline.clear_state(row.name);
+    pipeline.apply_structural_qc(row);
+    pipeline.apply_dna_histogram(row, { binCount: 128, range: [0, 220] });
+    modelingState.detect_peak_regions(row);
+    modelingState.assign_lone_peak_identity(row, 'g1');
+
+    const state = pipeline.get_state(row.name);
+    const sampleRecord = {
+      name: row.name,
+      model: 'watson_pragmatic',
+      reviewed: true,
+      g1_left: state.modeling.peakSelection.regions.g1.left,
+      g1_right: state.modeling.peakSelection.regions.g1.right,
+      g1_source: state.modeling.peakSelection.regions.g1.source,
+      g2_left: state.modeling.peakSelection.regions.g2.left,
+      g2_right: state.modeling.peakSelection.regions.g2.right,
+      g2_source: state.modeling.peakSelection.regions.g2.source,
+      ratio_mode: 'bounded',
+      ratio_min: 1.65,
+      ratio_max: 2.25,
+      locked_ratio: 2,
+      cv_mode: 'free',
+      ploidy_count: 1,
+      peak_detection_status: state.modeling.peakDetection.status,
+      user_assigned_peak_identity: state.modeling.peakSelection.userAssignedIdentity,
+    };
+
+    const text = toml.serialize_session({
+      session: { created: '2026-09-26' },
+      files: { names: [row.name] },
+      metadata: { columns: [], rows: [] },
+      table: { selected_files: [row.name], filters: {} },
+      plot: { channel: 'DNA-A', color_by: '', bins: 128, remove_debris: false, remove_doublets: false, show_peak_threshold: false },
+      ui: { sidebar_collapsed: false, sidebar_width_px: 300, plot_panel_collapsed: false,
+        plot_panel_height_px: 400, metadata_panel_collapsed: false, metadata_panel_height_px: 200 },
+      modeling: { samples: [sampleRecord] },
+    });
+
+    const parsed = toml.parse_session_toml(text);
+    const parsedSample = parsed.modeling.samples[0];
+    const pass = parsedSample.user_assigned_peak_identity === 'g1'
+      && parsedSample.peak_detection_status === 'single_peak_unassigned';
+
+    return {
+      pass: Boolean(pass),
+      detail: JSON.stringify({ parsedSample }),
+    };
+  });
+
   return results;
 }"""
 

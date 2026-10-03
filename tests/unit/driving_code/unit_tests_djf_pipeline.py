@@ -1064,7 +1064,7 @@ _PIPELINE_HELPERS = r"""() => {
   });
 
   // QC-02/AD-3: before this, the sidebar toggle button read "did this gate
-  // succeed" off aria-pressed (which only ever meant "is the toggle on") while
+  // succeed" off data-active (which only ever meant "is the toggle on") while
   // the table's QC status column inspected the stage product's raw fields
   // directly -- two independent readings of the same product that could (and
   // did) disagree, so a gate could render "applied" in the sidebar while the
@@ -1142,11 +1142,11 @@ _PIPELINE_HELPERS = r"""() => {
       data: {
         channel_key: 'DAPI-A', eventCount: scatter.eventCount,
         channels: {
-          DNA_A: Float64Array.from({ length: scatter.eventCount }, () => 1),
+          DNA_A: Float64Array.from({ length: scatter.eventCount }, (_, i) => i + 1),
           DNA_H: null, DNA_W: null,
           FSC_A: scatter.channels.FSC_A, SSC_A: scatter.channels.SSC_A, Time: null,
         },
-        pnr: { DNA_A: 10, DNA_H: null, DNA_W: null, FSC_A: null, SSC_A: null, Time: null },
+        pnr: { DNA_A: scatter.eventCount + 2, DNA_H: null, DNA_W: null, FSC_A: null, SSC_A: null, Time: null },
         masks: { structural: null, timeQC: null, scatter: null, singlet: null, final: null },
       },
     };
@@ -1161,9 +1161,18 @@ _PIPELINE_HELPERS = r"""() => {
     row.data.masks.timeQC = timeMask;
     const third = pipeline.apply_cell_gate_fast(row).result;
     const refit = third.scatterMask !== first.scatterMask;
+    // An explicit review installs the fitted mask. The histogram consumed by
+    // fitting must then contain fewer events than the ungated histogram.
+    stateHelpers.set_filter_mask(row, 2, null);
+    const before = pipeline.apply_dna_histogram(row, { binCount: 10, range: [0, scatter.eventCount + 1] }).result;
+    pipeline.update_cell_gate(row, { reset: true });
+    const after = pipeline.apply_dna_histogram(row, { binCount: 10, range: [0, scatter.eventCount + 1] }).result;
     return {
-      pass: !first.skipped && reused && refit,
-      detail: JSON.stringify({ reused, refit }),
+      pass: !first.skipped && reused && refit
+        && after.retainedCount < before.retainedCount
+        && after.binnedCount === after.retainedCount
+        && row.data.masks.scatter !== null,
+      detail: JSON.stringify({ reused, refit, before: before.retainedCount, after: after.retainedCount }),
     };
   });
 

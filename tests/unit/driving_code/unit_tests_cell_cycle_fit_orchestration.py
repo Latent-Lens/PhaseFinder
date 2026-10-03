@@ -463,6 +463,36 @@ _TESTS = r"""() => {
     };
   });
 
+  run('BROWSER-01: when OPFS is unavailable, app degrades with a visible notice without aborting', () => {
+    const fakeScope = {
+      Worker: window.Worker,
+      WebAssembly: window.WebAssembly,
+      indexedDB: window.indexedDB,
+      CSS: window.CSS,
+      HTMLElement: window.HTMLElement,
+      navigator: { storage: {} },
+      showDirectoryPicker: undefined,
+      structuredClone: window.structuredClone,
+    };
+    const report = window.BrowserCompatibility.browser_capabilities(fakeScope);
+    const fakeRoot = document.createElement('div');
+    const header = document.createElement('div');
+    header.className = 'page_header';
+    fakeRoot.appendChild(header);
+    const initReport = window.BrowserCompatibility.init_compatibility(fakeRoot, fakeScope);
+    const notice = header.querySelector('.opfs_unavailable_notice');
+    return {
+      pass: report.optional.opfs === false
+        && report.missingOptional.includes('opfs')
+        && report.missingRequired.length === 0
+        && initReport.missingRequired.length === 0
+        && Boolean(notice)
+        && notice.getAttribute('role') === 'status'
+        && notice.textContent.includes('Origin Private File System'),
+      detail: JSON.stringify({ report, noticeText: notice?.textContent }),
+    };
+  });
+
   run('UI-12: overlay/ridge range contract expands when a wider live sample becomes visible', () => {
     const narrow = [
       { prepared: { maskedHistogram: { min: 20, max: 80 }, values: [20, 80] } },
@@ -842,6 +872,64 @@ _TESTS = r"""() => {
         && Object.values(modeling.resultsByKey).some((r) => r === djResult);
       return { pass, detail: JSON.stringify({ keys, activeResultKey: modeling.activeResultKey }) };
     });
+
+  run('UI-13: build_fit_series_entry computes Pearson/raw residuals straight from state.histogram.y and fit.expectedCounts', () => {
+    // Hand-computed against CellCyclePoisson.pearsonResiduals's own formula
+    // ((observed - expected) / sqrt(max(EPS, expected))) so this test would
+    // catch a divergence between the residual panel's numbers and the same
+    // fit's own diagnostics.js goodness-of-fit reporting, not just a typo.
+    const baseFit = {
+      modelId: 'dean_jett', modelLabel: 'Dean-Jett', phaseFractions: { g1: 0.5, s: 0.3, g2: 0.2 },
+      expectedCounts: [4, 25, 9, 16],
+      components: [
+        { id: 'g1', counts: [1, 1, 1, 1] }, { id: 's', counts: [1, 1, 1, 1] }, { id: 'g2', counts: [2, 23, 7, 14] },
+      ],
+    };
+    const seriesEntry = { row: {}, name: 'resid-sample' };
+    const state = { histogram: { x: [10, 20, 30, 40], y: [4, 20, 25, 4] } };
+    const entry = window.PlotRender.build_fit_series_entry(seriesEntry, state, baseFit);
+    const r = entry.residuals;
+    const closeArray = (actual, expected) => actual.length === expected.length
+      && actual.every((value, i) => Math.abs(value - expected[i]) < 1e-9);
+    const pass = r !== null
+      && closeArray(r.x, [10, 20, 30, 40])
+      && closeArray(r.observed, [4, 20, 25, 4])
+      && closeArray(r.expected, [4, 25, 9, 16])
+      && closeArray(r.raw, [0, -5, 16, -12])
+      && closeArray(r.pearson, [0, -1, 16 / 3, -3])
+      && r.outsideCount === 2 // |−1| and 0 are inside ±2; 16/3≈5.33 and −3 are outside
+      && Math.abs(r.outsideFraction - 0.5) < 1e-9
+      && Math.abs(r.maxAbsPearson - 16 / 3) < 1e-9
+      && r.maxAbsIndex === 2;
+    return { pass, detail: JSON.stringify(r) };
+  });
+
+  run("UI-13: build_fit_series_entry omits residuals rather than guessing, when the fit's histogram provenance doesn't line up", () => {
+    // Three ways a residual computation could go wrong instead of honestly
+    // reporting "not available": no observed counts at all (bare state),
+    // observed/expected of mismatched length (stale fit against a since-
+    // rebinned histogram), and a legacy fit result carrying no expectedCounts.
+    // Each must yield `residuals: null`, never a partial or misaligned array.
+    const seriesEntry = { row: {}, name: 'resid-guard' };
+    const components = [
+      { id: 'g1', counts: [1, 1] }, { id: 's', counts: [1, 1] }, { id: 'g2', counts: [1, 1] },
+    ];
+    const noObserved = window.PlotRender.build_fit_series_entry(
+      seriesEntry, { histogram: { x: [1, 2] } }, { modelId: 'dean_jett', expectedCounts: [3, 3], components },
+    );
+    const mismatchedLength = window.PlotRender.build_fit_series_entry(
+      seriesEntry, { histogram: { x: [1, 2], y: [3, 3, 3] } }, { modelId: 'dean_jett', expectedCounts: [3, 3], components },
+    );
+    const noExpected = window.PlotRender.build_fit_series_entry(
+      seriesEntry, { histogram: { x: [1, 2], y: [3, 3] } }, { modelId: 'dean_jett', components },
+    );
+    return {
+      pass: noObserved.residuals === null && mismatchedLength.residuals === null && noExpected.residuals === null,
+      detail: JSON.stringify({
+        noObserved: noObserved.residuals, mismatchedLength: mismatchedLength.residuals, noExpected: noExpected.residuals,
+      }),
+    };
+  });
 
   return results;
   })();

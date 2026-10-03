@@ -70,7 +70,7 @@ const SLOPE_MAX = 2;
 
 export const DEFAULT_CONFIG = Object.freeze({
   ratioMode: "bounded",
-  fitRatioRange: [1.65, 2.25],
+  fitRatioRange: [1.75, 2.25],
   lockedRatio: 2,
   cvMode: "free",
   cvMin: 0.01,
@@ -338,7 +338,7 @@ function component_from_counts(id, label, counts, areaParameter, role = "biologi
 
 export const watson_classic = {
   id: "watson_classic",
-  version: "1.0.0",
+  version: "1.1.0",
   label: "Watson Classic",
   kind: "generative",
   fitScope: "per_sample",
@@ -491,6 +491,11 @@ export const watson_classic = {
 
     const warnings = [
       ...fitQualityWarnings(diagnostics),
+      ...(fit.converged && phaseFractions.s < 0.01 ? [{
+        code: "WATSON_S_COLLAPSED",
+        severity: "warning",
+        message: "Watson fitted less than 1% S phase; overlapping peak components may have absorbed inter-peak cells. Review the fit before using these fractions.",
+      }] : []),
       ...components
         .map((component) => tailMassWarning({
           componentId: component.id,
@@ -505,7 +510,7 @@ export const watson_classic = {
     return {
       schemaVersion: 1,
       modelId: "watson_classic",
-      modelVersion: "1.0.0",
+      modelVersion: "1.1.0",
       modelLabel: "Watson Classic",
       kind: "generative",
       fitScope: "per_sample",
@@ -534,6 +539,7 @@ export const watson_classic = {
           startIndex: attempt.startIndex,
           deviance: attempt.deviance,
           converged: attempt.converged,
+          terminationReason: attempt.terminationReason,
           iterations: attempt.iterations,
         })),
       },

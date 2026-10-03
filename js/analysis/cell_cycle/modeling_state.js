@@ -10,13 +10,12 @@
 // modeling-specific behavior built on top of them.
 
 import { get_or_create_state, invalidate_model_results } from "../pipeline/pipeline_state.js";
-import { detectCellCyclePeakPair, proposeAutomaticPeakRegions } from "./peak_detection.js";
+import { detectCellCyclePeakPair, proposeAutomaticPeakRegions, proposeLonePeakRegions } from "./peak_detection.js";
 import { validatePeakRegions } from "./peak_regions.js";
 import { get_model, list_models } from "./model_registry.js";
 import { run_fit_in_worker, run_domain_sensitivity_in_worker, run_resample_uncertainty_in_worker } from "./fit_client.js";
 import { apply_result_contract, model_preflight } from "./result_contract.js";
-import { domainCoverageAudit, analyzeDomainSensitivity } from "./domain_sensitivity.js";
-import { resampleUncertainty } from "./resampling.js";
+import { domainCoverageAudit } from "./domain_sensitivity.js";
 import { deep_clone } from "../../util/clone.js";
 
 /*
@@ -104,6 +103,8 @@ export function detect_peak_regions(row, options = {}) {
       g2: width_evidence(result.detection.g2Candidate, "g2", result.detection.fallbackSigmaBins),
     },
     configuration: result.configuration,
+    lonePeakIndex: result.detection.lonePeakIndex ?? null,
+    loneCandidate: result.detection.loneCandidate ?? null,
   };
   modeling.histogramFingerprint = histogram.fingerprint ?? null;
 
@@ -111,17 +112,83 @@ export function detect_peak_regions(row, options = {}) {
   const replacingAutomaticSelection = modeling.peakSelection.source === "automatic";
   if (replacingAutomaticSelection) {
     modeling.peakSelection.regions = result.autoPeakRegions;
-    modeling.peakSelection.initialCenters = {
-      g1: result.detection.g1Candidate?.x ?? null,
-      g2: result.detection.g2Candidate?.x ?? null,
-    };
+    modeling.peakSelection.initialCenters = result.detection.status === "single_peak_unassigned"
+      ? null
+      : {
+        g1: result.detection.g1Candidate?.x ?? null,
+        g2: result.detection.g2Candidate?.x ?? null,
+      };
     modeling.peakSelection.reviewed = false;
+    modeling.peakSelection.userAssignedIdentity = null;
     invalidate_model_results(state, "automatic peak regions redetected");
   }
   modeling.peakSelection.stale = false;
   modeling.revision += 1;
 
   return modeling.peakDetection;
+}
+
+/*
+
+Purpose:
+	Explicitly assigns the identity of a single resolvable peak (as 'g1' or 'g2')
+	per owner decision D2, computes the corresponding proposed G1/G2 regions with
+	the unobserved peak projected by the expected ratio (2x or 0.5x), marks the
+	selection reviewed, records user-assigned provenance on modeling.peakSelection,
+	and invalidates cached fit results.
+
+Input:
+	row [object]: the sample row
+	identity [string]: 'g1' or 'g2'
+
+Output:
+	peakSelection [object]: the updated peakSelection state
+
+*/
+export function assign_lone_peak_identity(row, identity) {
+  const normIdentity = String(identity ?? "").toLowerCase().trim();
+  if (normIdentity !== "g1" && normIdentity !== "g2") {
+    throw new Error(`Invalid peak identity "${identity}". Must be 'g1' or 'g2'.`);
+  }
+  const state = get_or_create_state(row);
+  const histogram = require_histogram(state);
+  const modeling = state.modeling;
+  const detection = modeling.peakDetection;
+  if (!detection) {
+    throw new Error("Run detect_peak_regions() before assigning lone peak identity.");
+  }
+
+  const loneIndex = detection.lonePeakIndex
+    ?? (detection.candidates?.[0]?.index ?? 0);
+  const loneCandidate = detection.loneCandidate
+    ?? detection.candidates?.[0]
+    ?? null;
+
+  const regions = proposeLonePeakRegions(
+    histogram.edges,
+    loneIndex,
+    loneCandidate,
+    normIdentity,
+    detection.configuration ?? {},
+  );
+
+  const centers = histogram.edges.slice(0, -1).map((left, i) => 0.5 * (left + histogram.edges[i + 1]));
+  const expectedRatio = detection.configuration?.expectedRatio ?? 2;
+  const initialCenters = normIdentity === "g2"
+    ? { g1: centers[loneIndex] / expectedRatio, g2: centers[loneIndex] }
+    : { g1: centers[loneIndex], g2: expectedRatio * centers[loneIndex] };
+
+  modeling.peakSelection.regions = regions;
+  modeling.peakSelection.automaticRegions = regions;
+  modeling.peakSelection.initialCenters = initialCenters;
+  modeling.peakSelection.userAssignedIdentity = normIdentity;
+  modeling.peakSelection.source = "user_assigned";
+  modeling.peakSelection.reviewed = true;
+  modeling.peakSelection.stale = false;
+  modeling.peakSelection.revision += 1;
+  modeling.histogramFingerprint = histogram.fingerprint ?? null;
+  invalidate_model_results(state, `lone peak assigned as ${normIdentity.toUpperCase()}`);
+  return modeling.peakSelection;
 }
 
 /*
@@ -337,7 +404,7 @@ function assert_known_config(patch, template, prefix = "") {
 const RATIO_CV_CONSUMING_MODELS = new Set(["dean_jett", "watson_classic"]);
 
 const DEFAULT_RATIO_CV_SETTINGS = Object.freeze({
-  ratioMode: "bounded", cvMode: "free", lockedRatio: 2, ratioRange: [1.65, 2.25],
+  ratioMode: "bounded", cvMode: "free", lockedRatio: 2, ratioRange: [1.75, 2.25],
 });
 
 /*
@@ -469,9 +536,8 @@ function build_result_key(modelId, entry, row, state, config) {
 Purpose:
 	Fits a model against the row's current histogram and accepted G1/G2 peak
 	regions, storing the normalized result in modeling.resultsByKey and making it
-	the active result. Runs off the UI thread via the shared fit worker when
-	available, falling back to a synchronous main-thread fit only when worker
-	creation itself failed (fit_client.js's documented fallback).
+	the active result. Requires the shared fit worker; unavailable workers
+	reject explicitly rather than blocking the UI with a synchronous fit.
 
 Input:
 	row [object]: the sample row
@@ -537,17 +603,20 @@ export async function fit_cell_cycle_model(row, modelId, options = {}) {
   if (signal?.aborted) worker?.cancel();
   const abort = () => worker?.cancel();
   signal?.addEventListener?.("abort", abort, { once: true });
-  let rawResult = worker
-    ? await worker.promise
-    : entry.normalizeResult(entry.fit({ histogram, peakRegions, config }));
-  signal?.removeEventListener?.("abort", abort);
+  let rawResult;
+  try { rawResult = await worker.promise; }
+  catch (error) {
+    if (error.code !== "FIT_CANCELLED") throw error;
+    return apply_result_contract({ modelId, cancelled: true, computed: false, converged: false }, preflight);
+  }
+  finally { signal?.removeEventListener?.("abort", abort); }
   if (modeling.fitRequestId !== requestId || modeling.revision !== inputRevision || state.histogram !== inputHistogram) {
     const error = new Error("Fit inputs changed before this result completed; the stale result was discarded.");
     error.code = "FIT_INPUTS_CHANGED";
     throw error;
   }
   if (signal?.aborted) rawResult = { ...rawResult, cancelled: true };
-  const result = apply_result_contract(rawResult, preflight);
+  const result = apply_result_contract(rawResult, preflight, histogram);
   result.appliedConfiguration = deep_clone(config);
   result.peakRegions = deep_clone(peakRegions);
   result.configHash = digest(config);
@@ -630,9 +699,8 @@ Purpose:
 	tweak -- exactly like analyzeDomainSensitivity()'s own header describes its
 	intended usage. It runs the whole sweep inside the shared fit worker pool
 	(run_domain_sensitivity_in_worker(), fit_worker.js's "domain_sensitivity"
-	message) so that cost lands off the UI thread the same way a single fit does,
-	falling back to a synchronous main-thread sweep (blocking the UI for the
-	sweep's full duration) only in fit_client.js's documented no-worker case.
+	message). Worker unavailability rejects explicitly; the sweep never
+	falls back to the UI thread.
 
 Input:
 	row [object]: the sample row the result was fit against
@@ -698,20 +766,9 @@ export async function assess_domain_sensitivity(row, result, options = {}) {
   if (signal?.aborted) worker?.cancel();
   const abort = () => worker?.cancel();
   signal?.addEventListener?.("abort", abort, { once: true });
-  const analysis = worker
-    ? await worker.promise
-    : analyzeDomainSensitivity({
-      values,
-      domain,
-      binCounts,
-      perturbations,
-      fitFn: (histogram) => {
-        const rawVariantResult = entry.fit({ histogram, peakRegions: result.peakRegions, config: result.appliedConfiguration });
-        const normalized = entry.normalizeResult(rawVariantResult);
-        return { phaseFractions: normalized.phaseFractions, modelId: normalized.modelId ?? result.modelId };
-      },
-    });
-  signal?.removeEventListener?.("abort", abort);
+  let analysis;
+  try { analysis = await worker.promise; }
+  finally { signal?.removeEventListener?.("abort", abort); }
 
   if (modeling.revision !== inputRevision || state.histogram !== inputHistogram) {
     const error = new Error(
@@ -741,44 +798,6 @@ export async function assess_domain_sensitivity(row, result, options = {}) {
     }
   }
   return result;
-}
-
-// Duplicated (not shared) from fit_worker.js's own build_resampling_fit_fn:
-// this is the no-worker fallback used only when fit_client.js could not
-// create a worker at all, and it needs the SAME per-model closure the worker
-// builds -- one call per replicate, returning one { modelId, comparisonGroup,
-// phaseFractions, bic, converged, parameters } outcome per supplied model, with
-// a model that throws on a perturbed variant reported as non-converged for
-// that model only rather than losing every other model's outcome for the
-// replicate. Kept private and duplicated rather than imported from
-// fit_worker.js because that module registers a "message" listener on `self`
-// at load time, which would attach to the main thread's `window` instead of a
-// worker's scope if imported here.
-function resampling_fit_fn(models) {
-  const entries = (models ?? []).map(({ modelId, config }) => {
-    const entry = get_model(modelId);
-    if (!entry) throw new Error(`Unknown model "${modelId}".`);
-    return { modelId, config, entry };
-  });
-  return ({ histogram, peakRegions }) => entries.map(({ modelId, config, entry }) => {
-    try {
-      const rawVariantResult = entry.fit({ histogram, peakRegions, config });
-      const normalized = entry.normalizeResult(rawVariantResult);
-      return {
-        modelId: normalized.modelId ?? modelId,
-        comparisonGroup: normalized.comparisonGroup ?? entry.comparisonGroup ?? null,
-        phaseFractions: normalized.phaseFractions ?? null,
-        bic: Number.isFinite(normalized.diagnostics?.bic) ? normalized.diagnostics.bic : null,
-        converged: normalized.converged === true,
-        parameters: normalized.parameters ?? null,
-      };
-    } catch (thrown) {
-      return {
-        modelId, comparisonGroup: entry.comparisonGroup ?? null,
-        phaseFractions: null, bic: null, converged: false, parameters: null,
-      };
-    }
-  });
 }
 
 // A resampling warning that must withhold the number, using the exact same
@@ -869,7 +888,7 @@ export async function assess_resampling_uncertainty(row, result, options = {}) {
 
   const state = get_or_create_state(row);
   const modeling = state.modeling;
-  const { replicates, seed, intervalLevel, intervalMethod, perturbations, onProgress, signal } = options;
+  const { replicates, seed, intervalLevel, intervalMethod, perturbations, qcVariants, onProgress, signal } = options;
 
   // Same staleness guard fit_cell_cycle_model() and assess_domain_sensitivity()
   // use around their own awaits: a resampling sweep is by far the slowest
@@ -892,23 +911,19 @@ export async function assess_resampling_uncertainty(row, result, options = {}) {
       : resolve_model_configuration(candidate.id, modeling.settings),
   }));
 
+  const resolvedPerturbations = perturbations ?? (qcVariants ? { qcVariants } : undefined);
   const spec = {
     models, values, domain, binCount: result.histogramProvenance?.binCount ?? null,
-    peakRegions: result.peakRegions, replicates, seed, intervalLevel, intervalMethod, perturbations,
+    peakRegions: result.peakRegions, replicates, seed, intervalLevel, intervalMethod,
+    perturbations: resolvedPerturbations,
   };
   const worker = run_resample_uncertainty_in_worker(spec, { onProgress });
   if (signal?.aborted) worker?.cancel();
   const abort = () => worker?.cancel();
   signal?.addEventListener?.("abort", abort, { once: true });
-  const bundle = worker
-    ? await worker.promise
-    : resampleUncertainty({
-      ...spec,
-      fitFn: resampling_fit_fn(models),
-      shouldCancel: () => signal?.aborted === true,
-      onProgress,
-    });
-  signal?.removeEventListener?.("abort", abort);
+  let bundle;
+  try { bundle = await worker.promise; }
+  finally { signal?.removeEventListener?.("abort", abort); }
 
   if (modeling.revision !== inputRevision || state.histogram !== inputHistogram) {
     const error = new Error(
@@ -919,6 +934,19 @@ export async function assess_resampling_uncertainty(row, result, options = {}) {
   }
 
   result.resampling = bundle;
+  if (!result.provenance) result.provenance = {};
+  result.provenance.resampling = {
+    method: bundle.method,
+    intervalMethod: bundle.intervalMethod,
+    intervalLevel: bundle.intervalLevel,
+    seed: bundle.seed,
+    replicatesRequested: bundle.replicatesRequested,
+    replicatesSucceeded: bundle.replicatesSucceeded,
+    replicatesFailed: bundle.replicatesFailed,
+    failures: bundle.failures ?? [],
+    definition: bundle.definition,
+    cancelled: Boolean(bundle.cancelled),
+  };
   if (bundle.warnings.length) result.warnings = [...(result.warnings ?? []), ...bundle.warnings];
   // Same hard-block convention as domainCoverageAudit()/assess_domain_sensitivity()
   // above: a resampling warning marked critical/nonreportable (too few usable

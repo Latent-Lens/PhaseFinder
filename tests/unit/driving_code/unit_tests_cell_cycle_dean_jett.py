@@ -130,7 +130,7 @@ _DEAN_JETT_TESTS = r"""() => {
 
   run('dean_jett default (bounded) ratio mode keeps the fitted G2:G1 ratio within fitRatioRange', () => {
     const ratio = fitted.parameters.g2Mean / fitted.parameters.g1Mean;
-    const pass = ratio >= 1.65 - 1e-6 && ratio <= 2.25 + 1e-6;
+    const pass = ratio >= 1.75 - 1e-6 && ratio <= 2.25 + 1e-6;
     return { pass, detail: ratio };
   });
 

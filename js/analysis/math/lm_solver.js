@@ -494,6 +494,13 @@ export function runLevenbergMarquardt({
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
   const shouldCancel = typeof options.shouldCancel === "function" ? options.shouldCancel : null;
 
+  // PERF-02/AUDIT-006: wall-clock time for this solve, surfaced through the
+  // optimizerDiagnostics object every caller already threads back to the UI
+  // (see dean_jett.js/dean_jett_fox.js/watson_classic.js normalizeResult()).
+  // Debug-visible only -- inspected via the returned diagnostics object, never
+  // logged or transmitted anywhere.
+  const solveStartedAt = globalThis.performance?.now?.() ?? Date.now();
+
   let parameters = asFiniteArray(
     projectFn(asFiniteArray(initialParameters, "initialParameters")),
     "projected parameters",
@@ -510,6 +517,7 @@ export function runLevenbergMarquardt({
   let iterationsPerformed = 0;
   let rankFailureCount = 0;
   let maximumJacobianCondition = 1;
+  let lastJacobianCondition = 1;
   let activeProjectionCount = 0;
   let lastStep = null;
   let lastAcceptedStep = null;
@@ -537,10 +545,8 @@ export function runLevenbergMarquardt({
       projectFn,
       finiteDifferenceStep: options.finiteDifferenceStep,
     });
-    maximumJacobianCondition = Math.max(
-      maximumJacobianCondition,
-      estimateJacobianCondition(jacobian),
-    );
+    lastJacobianCondition = estimateJacobianCondition(jacobian);
+    maximumJacobianCondition = Math.max(maximumJacobianCondition, lastJacobianCondition);
     const { matrix, rightHandSide } = buildNormalEquations(
       jacobian,
       residuals,
@@ -693,7 +699,6 @@ export function runLevenbergMarquardt({
     !converged &&
     options.maxIterations > 0 &&
     iterationsPerformed >= options.maxIterations;
-
   return {
     parameters,
     model: evaluationObject?.model,
@@ -711,10 +716,12 @@ export function runLevenbergMarquardt({
     cancelled,
     finalLambda: lambda,
     optimizerDiagnostics: {
+      solveMilliseconds: (globalThis.performance?.now?.() ?? Date.now()) - solveStartedAt,
       maximumJacobianCondition,
+      lastJacobianCondition,
       rankFailureCount,
       activeProjectionCount,
-      weaklyIdentified: !Number.isFinite(maximumJacobianCondition) || maximumJacobianCondition > 1e8,
+      weaklyIdentified: !Number.isFinite(lastJacobianCondition) || lastJacobianCondition > 1e8,
       finiteDifferenceRelativeStep: options.finiteDifferenceStep,
       convergenceCriteria: {
         objectiveTolerance: options.tolerance,

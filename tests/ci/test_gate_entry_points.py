@@ -27,7 +27,7 @@ PREFLIGHT_READERS = {FIT_FINALIZER, "js/analysis/cell_cycle/qc_review_ui.js"}
 # off-thread, but the worker's output is piped straight back into the SAME
 # apply_result_contract() call in modeling_state.js -- never treated as final
 # where it lands).
-RAW_FIT_CALLERS = {FIT_FINALIZER, "js/analysis/cell_cycle/fit_worker.js"}
+RAW_FIT_CALLERS = {"js/analysis/cell_cycle/fit_worker.js"}
 
 # The five consumer-facing places that must reach a fit through
 # fit_cell_cycle_model() -- the UI (fit-current, bulk run-all, and a
@@ -99,7 +99,7 @@ class GateEntryPointTests(unittest.TestCase):
             "reportable result.",
         )
 
-    def test_raw_entry_fit_is_only_called_inside_the_finalizer_and_the_worker(self):
+    def test_raw_entry_fit_is_only_called_inside_the_worker(self):
         callers = set()
         for path in JS.rglob("*.js"):
             relative = path.relative_to(ROOT).as_posix()

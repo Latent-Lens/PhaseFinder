@@ -123,6 +123,18 @@ _TESTS = r"""() => {
       };
     });
 
+    run('REL-05: ratio-range model versions identify the changed defaults', () => {
+      const versions = Object.fromEntries(['dean_jett', 'dean_jett_fox', 'watson_classic', 'watson_pragmatic']
+        .map((id) => [id, registry.get_model(id)?.version]));
+      return {
+        pass: versions.dean_jett === '1.1.0'
+          && versions.dean_jett_fox === '1.1.0'
+          && versions.watson_classic === '1.1.0'
+          && versions.watson_pragmatic === '1.0.0',
+        detail: JSON.stringify(versions),
+      };
+    });
+
     run('registry: register_default_models() also registers the watson_pragmatic decomposition', () => {
       const entry = registry.get_model('watson_pragmatic');
       return {

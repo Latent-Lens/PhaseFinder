@@ -11,6 +11,23 @@ let worker = null;
 let nextRequestId = 1;
 const pending = new Map(); // request_id -> { resolve, reject, onProgress }
 
+function terminate_worker(error = null) {
+  if (worker) {
+    try {
+      worker.terminate();
+    } catch (_) {
+      // worker may already be closed
+    }
+    worker = null;
+  }
+  if (error) {
+    for (const [, request] of pending) {
+      request.reject(error);
+    }
+    pending.clear();
+  }
+}
+
 function ensure_worker() {
   if (worker) return worker;
   // The `new URL(...)` literal MUST stay inline (a bundler only recognises this
@@ -37,9 +54,15 @@ function ensure_worker() {
     else request.reject(new Error(message.message || "CLOCCS fit failed."));
   });
   worker.addEventListener("error", (event) => {
-    // A worker-level failure rejects every in-flight request rather than hanging.
-    for (const [, request] of pending) request.reject(new Error(event.message || "CLOCCS worker error."));
-    pending.clear();
+    // WORKER-01: A worker-level failure terminates the failed worker and rejects
+    // every in-flight request so the client can recreate a fresh worker on retry.
+    const err = new Error(event?.message || "CLOCCS worker error.");
+    terminate_worker(err);
+  });
+  worker.addEventListener("messageerror", () => {
+    const err = new Error("CLOCCS worker message could not be deserialized.");
+    err.code = "WORKER_MESSAGE_ERROR";
+    terminate_worker(err);
   });
   return worker;
 }
@@ -55,15 +78,54 @@ Output:
 		{ cancelled: true }); cancel() requests interruption at the next round.
 */
 export function run_cloccs_fit(series, config, { onProgress } = {}) {
-  const active = ensure_worker();
+  let active;
+  try {
+    active = ensure_worker();
+  } catch (err) {
+    return {
+      promise: Promise.reject(err),
+      cancel: () => {},
+    };
+  }
+
   const request_id = nextRequestId;
   nextRequestId += 1;
+  let cancel_fn = () => {};
   const promise = new Promise((resolve, reject) => {
     pending.set(request_id, { resolve, reject, onProgress });
+    try {
+      active.postMessage(worker_message("fit", request_id, { series, config }));
+      cancel_fn = () => {
+        try {
+          active.postMessage(worker_message("cancel", request_id));
+        } catch (_) {
+          // worker may already be terminated
+        }
+      };
+    } catch (err) {
+      // WORKER-01: remove pending request immediately on sync postMessage failure
+      pending.delete(request_id);
+      reject(err);
+    }
   });
-  active.postMessage(worker_message("fit", request_id, { series, config }));
+
   return {
     promise,
-    cancel: () => active.postMessage(worker_message("cancel", request_id)),
+    cancel: () => cancel_fn(),
   };
+}
+
+// Accessors for testing and worker lifecycle management (WORKER-01)
+export function get_cloccs_worker() {
+  return worker;
+}
+
+export function terminate_cloccs_worker(reason = "CLOCCS worker terminated.") {
+  const err = new Error(reason);
+  err.code = "WORKER_TERMINATED";
+  terminate_worker(err);
+}
+
+export function get_cloccs_pending_count() {
+  return pending.size;
 }

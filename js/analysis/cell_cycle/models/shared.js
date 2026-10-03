@@ -14,7 +14,7 @@
 // fixed-node Gauss-Legendre quadrature rather than on the histogram's own bin
 // centers as the latent integration grid.
 
-import { gaussianBinMass, normalCdf } from "../../math/gaussian_bin_mass.js";
+import { cached_bin_geometry, gaussianBinMass, normalCdf } from "../../math/gaussian_bin_mass.js";
 import { gaussLegendre } from "../../math/quadrature.js";
 import { clamp } from "../../math/stats.js";
 
@@ -270,7 +270,8 @@ export function convolvedSPhaseWithProfile(
   { sArea, g1Mean, g2Mean, broadeningCV, profileFn },
   quadratureNodes = DEFAULT_S_QUADRATURE_NODES,
 ) {
-  const binCount = edges.length - 1;
+  const { left, right } = cached_bin_geometry(edges);
+  const binCount = left.length;
   const out = new Array(binCount).fill(0);
   const span = g2Mean - g1Mean;
   if (!(sArea > 0) || !(span > 0)) return out;
@@ -286,9 +287,9 @@ export function convolvedSPhaseWithProfile(
     const sigma = Math.max(EPS, Math.abs(broadeningCV * u));
     const massScale = sArea * weight * qz;
 
-    let previousCdf = normalCdf(edges[0], u, sigma);
+    let previousCdf = binCount ? normalCdf(left[0], u, sigma) : 0;
     for (let i = 0; i < binCount; i += 1) {
-      const nextCdf = normalCdf(edges[i + 1], u, sigma);
+      const nextCdf = normalCdf(right[i], u, sigma);
       out[i] += massScale * Math.max(0, nextCdf - previousCdf);
       previousCdf = nextCdf;
     }

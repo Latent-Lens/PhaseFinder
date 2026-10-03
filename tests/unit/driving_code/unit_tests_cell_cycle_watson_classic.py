@@ -111,10 +111,48 @@ _WATSON_CLASSIC_TESTS = r"""() => {
     pass: fitted.converged === true, detail: fitted.convergenceReason,
   }));
 
+  run('Watson restart audit records every termination reason', () => ({
+    pass: fitted.diagnostics.restarts.length === 4
+      && fitted.diagnostics.restarts.every((attempt) => typeof attempt.terminationReason === 'string'),
+    detail: JSON.stringify(fitted.diagnostics.restarts),
+  }));
+
   run('watson_classic recovers G1/S/G2 phase fractions within 2% of the true values', () => {
     const { g1, s, g2 } = fitted.phaseFractions;
     const pass = close(g1, trueFractions.g1, 0.02) && close(s, trueFractions.s, 0.02) && close(g2, trueFractions.g2, 0.02);
     return { pass, detail: JSON.stringify({ fitted: fitted.phaseFractions, truth: trueFractions }) };
+  });
+
+  run('a converged Watson fit below 1% S carries a material collapse warning', () => {
+    const noS = { ...TRUE, sArea: 0, slope: 0 };
+    const emptyS = model.normalizeResult(model.fit({
+      histogram: { edges, counts: syntheticCounts(noS, edges) }, peakRegions: regions, config: {},
+    }));
+    const warning = emptyS.warnings.find((item) => item.code === 'WATSON_S_COLLAPSED');
+    return {
+      pass: emptyS.converged && emptyS.phaseFractions.s < 0.01
+        && warning?.severity === 'warning'
+        && !fitted.warnings.some((item) => item.code === 'WATSON_S_COLLAPSED'),
+      detail: JSON.stringify({ s: emptyS.phaseFractions.s, warning }),
+    };
+  });
+
+  run('a 30.8% S fixture with a broad G2 tail never collapses silently', () => {
+    const g1 = peakComponents(edges, { g1Area: 80000, g1Mean: 70, g1CV: 0.07, g2Area: 0, g2Mean: 140, g2CV: 0.08 }).g1;
+    const g2 = peakComponents(edges, { g1Area: 0, g1Mean: 70, g1CV: 0.07, g2Area: 224000, g2Mean: 140, g2CV: 0.08 }).g2;
+    const tail = peakComponents(edges, { g1Area: 0, g1Mean: 70, g1CV: 0.07, g2Area: 56000, g2Mean: 210, g2CV: 0.15 }).g2;
+    const s = watsonRectangleSPhase(edges, { sArea: 160000, g1Mean: 70, g2Mean: 140, broadeningCV: 0.07, slope: 0 }, 64);
+    const tailCounts = g1.map((v, i) => Math.round(v + g2[i] + tail[i] + s[i]));
+    const fit = model.normalizeResult(model.fit({
+      histogram: { edges, counts: tailCounts },
+      peakRegions: { g1: { left: 50, right: 90 }, g2: { left: 120, right: 220 } }, config: {},
+    }));
+    return {
+      pass: fit.converged && (fit.phaseFractions.s >= 0.01
+        || fit.warnings.some((item) => item.code === 'WATSON_S_COLLAPSED' && item.severity === 'warning')),
+      detail: JSON.stringify({ truthS: 160000 / 520000, fittedS: fit.phaseFractions.s,
+        g2CV: fit.parameters.g2CV, deviance: fit.diagnostics.deviance }),
+    };
   });
 
   run('watson_classic recovers G1/G2 means within one bin and the S slope within 0.2', () => {

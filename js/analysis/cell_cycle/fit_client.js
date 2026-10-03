@@ -1,23 +1,8 @@
-// Main-thread wrapper around fit_worker.js: it runs cell-cycle model fits off
-// the main thread across a small POOL of workers, so a bulk fit of several
-// samples runs several fits in parallel instead of one at a time. run_fit_in_worker()
-// dispatches one fit to the least-loaded worker and returns a { promise, cancel }
-// handle; the pool is created lazily and falls back gracefully (returns null, so
-// the caller fits on the main thread) when workers are unavailable.
-//
-// Each fit is independent and mutates only its own sample's state, so routing
-// different samples to different workers is safe. Pool size scales with the
-// machine: a fraction of the logical cores (see POOL_FRACTION), always leaving at
-// least one core for the UI thread. The pool grows lazily and never exceeds the
-// number of samples actually being fit, so a big machine only spins up as many
-// workers as there is work.
-
+// Bounded worker pool: one request per worker, excess requests wait on the UI
+// thread. Cancellation terminates only that request's worker. Scientific work
+// never falls back to the UI thread when workers fail or are unavailable.
 import { is_worker_message, worker_message } from "../../util/worker_protocol.js";
 
-// Fraction of the machine's logical cores to devote to parallel fits. Kept below
-// 1 so the main/UI thread (and other tabs/apps) keep headroom. Tune here: 0.5
-// (default) is conservative and leaves half the cores free, 0.75 uses most of
-// them, closer to 1 is aggressive.
 const POOL_FRACTION = 0.5;
 
 // When navigator.hardwareConcurrency is unavailable, assume a modest 4-core
@@ -55,328 +40,119 @@ const POOL_SIZE = compute_pool_size(
     : undefined,
 );
 
-let pool = null; // array of { worker, inFlight } entries, or null before creation
-let pool_unavailable = false;
-let fit_worker_request_id = 0;
-// request_id -> { resolve, reject, onProgress, entry }. Shared across the pool;
-// each worker's message handler looks the request up here by id.
-const fit_worker_requests = new Map();
+const pool = [];
+const queue = [];
+let requestId = 0;
 
-/*
+export function fit_pool_size() { return POOL_SIZE; }
 
-Purpose:
-	The number of fits that can run in parallel (the worker-pool size), so a bulk
-	caller can bound its concurrent dispatch to match.
-
-Output:
-	size [number]: the pool size (>= 1)
-
-*/
-export function fit_pool_size() {
-  return POOL_SIZE;
+function failure(message, code) {
+  return Object.assign(new Error(message), { code });
 }
 
-// Rejects and clears every in-flight request belonging to one worker entry
-// (used when that worker errors out).
-function fail_entry_requests(entry, message) {
-  for (const [id, request] of [...fit_worker_requests]) {
-    if (request.entry === entry) {
-      fit_worker_requests.delete(id);
-      request.reject(new Error(message));
-    }
-  }
+function remove_worker(entry) {
+  entry.worker.terminate();
+  const index = pool.indexOf(entry);
+  if (index >= 0) pool.splice(index, 1);
 }
 
-function make_worker_entry() {
-  // The `new URL(...)` MUST stay inline (a bundler only recognises this exact
-  // literal form as a worker entry point) -- same rule as the FCS data worker.
+function settle(entry, error, result) {
+  const request = entry.request;
+  if (!request) return;
+  entry.request = null;
+  request.entry = null;
+  request.done = true;
+  if (error) request.reject(error);
+  else request.resolve(result);
+  dispatch();
+}
+
+function make_worker() {
   const worker = new Worker(new URL("./fit_worker.js", import.meta.url), { type: "module" });
-  const entry = { worker, inFlight: 0 };
-
-  worker.addEventListener("message", (event) => {
-    const message = event.data || {};
-    const request = fit_worker_requests.get(message.request_id);
-    if (!request) return;
-
+  const entry = { worker, request: null };
+  const fail = (code, message) => {
+    remove_worker(entry);
+    settle(entry, failure(message, code));
+  };
+  worker.addEventListener("message", ({ data: message }) => {
+    const request = entry.request;
+    if (!request || message?.request_id !== request.id) return;
     if (!is_worker_message(message, ["progress", "result"])) {
-      fit_worker_requests.delete(message.request_id);
-      entry.inFlight = Math.max(0, entry.inFlight - 1);
-      const error = new Error("Fit worker protocol mismatch.");
-      error.code = "WORKER_PROTOCOL_MISMATCH";
-      request.reject(error);
-      return;
-    }
-
-    if (message.type === "progress") {
-      // Two progress shapes ride this one message type: a single fit's
-      // iteration/maxIterations/sse (run_fit_in_worker), and a replicate
-      // sweep's completed/total/succeeded/failed (UNC-01's
-      // run_resample_uncertainty_in_worker). Forwarding both sets of fields
-      // unconditionally costs nothing -- the fields a caller didn't ask about
-      // are simply undefined -- and keeps this handler from needing to know
-      // which request type is in flight.
-      request.onProgress?.({
-        iteration: message.iteration,
-        maxIterations: message.maxIterations,
-        sse: message.sse,
-        completed: message.completed,
-        total: message.total,
-        succeeded: message.succeeded,
-        failed: message.failed,
-      });
-      return;
-    }
-    if (message.type === "result") {
-      fit_worker_requests.delete(message.request_id);
-      entry.inFlight = Math.max(0, entry.inFlight - 1);
-      if (message.ok) {
-        request.resolve(message.result);
-      } else {
-        const error = new Error(message.error || "Fit worker failed.");
-        error.code = message.code || "FIT_WORKER_FAILED";
-        request.reject(error);
-      }
+      fail("WORKER_PROTOCOL_MISMATCH", "Fit worker protocol mismatch.");
+    } else if (message.type === "progress") {
+      request.onProgress?.(message);
+    } else {
+      settle(entry, message.ok ? null : failure(message.error || "Fit worker failed.",
+        message.code || "FIT_WORKER_FAILED"), message.result);
     }
   });
-
-  worker.addEventListener("error", () => {
-    // This worker died: reject its in-flight fits and drop it from the pool. The
-    // remaining workers keep serving; if the pool empties, mark it unavailable so
-    // callers fall back to the main thread.
-    fail_entry_requests(entry, "Fit worker failed.");
-    try {
-      worker.terminate();
-    } catch (_) {
-      /* already gone */
-    }
-    if (pool) pool = pool.filter((candidate) => candidate !== entry);
-    if (pool && pool.length === 0) {
-      pool_unavailable = true;
-      pool = null;
-    }
-  });
-
+  worker.addEventListener("error", () => fail("FIT_WORKER_FAILED", "Fit worker failed."));
+  worker.addEventListener("messageerror", () => fail("FIT_WORKER_FAILED", "Fit worker response could not be decoded."));
   return entry;
 }
 
-// The worker currently handling the fewest fits -- balances a bulk batch across
-// the pool even when fits finish at different times.
-function least_loaded(entries) {
-  let best = entries[0];
-  for (const entry of entries) if (entry.inFlight < best.inFlight) best = entry;
-  return best;
-}
-
-// Picks a worker for the next fit, growing the pool lazily: reuse an idle worker
-// when one exists; otherwise spawn a new worker up to POOL_SIZE (so a single fit
-// only ever creates one worker, and a bulk batch grows the pool on demand); once
-// at the cap, hand the fit to the least-loaded worker. Returns null when no
-// worker can be created (caller falls back to the main thread).
-function acquire_worker() {
-  if (pool_unavailable || typeof Worker === "undefined") return null;
-  if (!pool) pool = [];
-
-  const idle = pool.find((entry) => entry.inFlight === 0);
-  if (idle) return idle;
-
-  if (pool.length < POOL_SIZE) {
-    try {
-      const entry = make_worker_entry();
-      pool.push(entry);
-      return entry;
-    } catch (_) {
-      if (pool.length === 0) {
-        pool_unavailable = true;
-        pool = null;
+function dispatch() {
+  while (queue.length) {
+    let entry = pool.find(candidate => !candidate.request);
+    if (!entry && pool.length >= POOL_SIZE) return;
+    if (!entry) {
+      try {
+        entry = make_worker();
+        pool.push(entry);
+      } catch (_) {
+        for (const request of queue.splice(0)) {
+          request.done = true;
+          request.reject(failure("Fit workers are unavailable. Enable Web Workers and reload to fit samples.", "FIT_WORKER_UNAVAILABLE"));
+        }
+        return;
       }
-      // Fall through to reuse an existing worker if we have one.
+    }
+    const request = queue.shift();
+    request.entry = entry;
+    entry.request = request;
+    try {
+      entry.worker.postMessage(worker_message(request.type, request.id, request.payload));
+    } catch (_) {
+      remove_worker(entry);
+      settle(entry, failure("Fit worker request could not be sent.", "FIT_WORKER_FAILED"));
     }
   }
-  return pool && pool.length ? least_loaded(pool) : null;
 }
 
-/*
+function submit(type, payload, { onProgress } = {}) {
+  const request = { id: ++requestId, type, payload, onProgress, entry: null, done: false };
+  const promise = new Promise((resolve, reject) => { Object.assign(request, { resolve, reject }); });
+  queue.push(request);
+  dispatch();
+  return { promise, cancel() {
+    if (request.done) return;
+    const error = failure("Fit cancelled.", "FIT_CANCELLED");
+    error.name = "AbortError";
+    if (request.entry) {
+      const entry = request.entry;
+      remove_worker(entry);
+      settle(entry, error);
+    } else {
+      const index = queue.indexOf(request);
+      if (index >= 0) queue.splice(index, 1);
+      request.done = true;
+      request.reject(error);
+    }
+  } };
+}
 
-Purpose:
-	Runs a model's fit() in the worker pool for a given histogram and config.
-
-	Cancellation caveat: a worker processes its message queue one message to
-	completion at a time, and the Levenberg-Marquardt loop is fully synchronous
-	with no yield points, so the "fit" handler runs start-to-finish before the
-	worker reads a queued "cancel". cancel() therefore only takes effect for a
-	model that itself checks options.shouldCancel() at a real yield point.
-
-Input:
-	modelId [string]: a registered model id (e.g. "dean_jett_fox")
-	histogram [object]: a masked histogram (x/y required)
-	config [object]: model-specific fit config
-	options [object]: optional { onProgress(iteration,maxIterations,sse),
-	                  peakRegions: { g1:{left,right}, g2:{left,right} } }
-
-Output:
-	handle [object|null]: { promise, cancel } -- promise resolves to the model's
-	                      normalized result -- or null when no worker is
-	                      available (caller should fit on the main thread)
-
-*/
 export function run_fit_in_worker(modelId, histogram, config, { onProgress, peakRegions } = {}) {
-  const entry = acquire_worker();
-  if (!entry) return null;
-
-  const request_id = ++fit_worker_request_id;
-  const promise = new Promise((resolve, reject) => {
-    fit_worker_requests.set(request_id, { resolve, reject, onProgress, entry });
-  });
-
-  try {
-    entry.inFlight += 1;
-    entry.worker.postMessage(worker_message("fit", request_id, { modelId, histogram, peakRegions, config }));
-  } catch (_) {
-    fit_worker_requests.delete(request_id);
-    entry.inFlight = Math.max(0, entry.inFlight - 1);
-    return null;
-  }
-
-  const cancel = () => {
-    try {
-      entry.worker.postMessage(worker_message("cancel", request_id));
-    } catch (_) {
-      // Worker already gone; nothing to cancel.
-    }
-  };
-
-  return { promise, cancel };
+  return submit("fit", { modelId, histogram, config, peakRegions }, { onProgress });
 }
 
-/*
-
-Purpose:
-	DOMAIN-01: runs analyzeDomainSensitivity() (js/analysis/cell_cycle/
-	domain_sensitivity.js) in the worker pool instead of on the main thread.
-	analyzeDomainSensitivity() refits the sample once per supported bin count x
-	domain perturbation (12 fits with the defaults) and its fitFn contract is
-	synchronous by design, so the whole sweep would otherwise block the UI
-	thread for several fit-durations at once; running it in a worker keeps that
-	cost off the critical path the same way run_fit_in_worker() does for a
-	single fit.
-
-	Cancellation has the same caveat as run_fit_in_worker(): the sweep is one
-	synchronous message handler in the worker with no yield points, so cancel()
-	cannot interrupt a sweep already in progress -- it only prevents acting on a
-	result that arrives after the caller has stopped caring.
-
-Input:
-	spec [object]: { modelId, values, domain: {min,max}, peakRegions, config,
-	                 binCounts, perturbations } -- binCounts/perturbations may be
-	                 omitted to use analyzeDomainSensitivity()'s own defaults
-	options [object]: optional { onProgress } -- accepted for symmetry with
-	                  run_fit_in_worker(); analyzeDomainSensitivity() has no
-	                  per-variant progress hook, so it is otherwise unused today
-
-Output:
-	handle [object|null]: { promise, cancel } -- promise resolves to
-	                      analyzeDomainSensitivity()'s result object -- or null
-	                      when no worker is available (caller should run the
-	                      sweep on the main thread instead)
-
-*/
-export function run_domain_sensitivity_in_worker(spec, { onProgress } = {}) {
-  const entry = acquire_worker();
-  if (!entry) return null;
-
-  const request_id = ++fit_worker_request_id;
-  const promise = new Promise((resolve, reject) => {
-    fit_worker_requests.set(request_id, { resolve, reject, onProgress, entry });
-  });
-
-  const { modelId, values, domain, peakRegions, config, binCounts, perturbations } = spec;
-  try {
-    entry.inFlight += 1;
-    entry.worker.postMessage(worker_message("domain_sensitivity", request_id, {
-      modelId, values, domain, peakRegions, config, binCounts, perturbations,
-    }));
-  } catch (_) {
-    fit_worker_requests.delete(request_id);
-    entry.inFlight = Math.max(0, entry.inFlight - 1);
-    return null;
-  }
-
-  const cancel = () => {
-    try {
-      entry.worker.postMessage(worker_message("cancel", request_id));
-    } catch (_) {
-      // Worker already gone; nothing to cancel.
-    }
-  };
-
-  return { promise, cancel };
+export function run_peak_tracking_time_qc_in_worker(dataset, structuralMask, options, { onProgress } = {}) {
+  return submit("peak_tracking_time_qc", { dataset, structuralMask, options }, { onProgress });
 }
 
-/*
+export function run_domain_sensitivity_in_worker(spec, options = {}) {
+  return submit("domain_sensitivity", spec, options);
+}
 
-Purpose:
-	UNC-01: runs resampleUncertainty() (js/analysis/cell_cycle/resampling.js) in
-	the worker pool instead of on the main thread. resampleUncertainty() refits
-	every supplied model once per replicate (DEFAULT_REPLICATES=200 by default)
-	and its fitFn contract is synchronous by design (see resampling.js's
-	header), so the whole sweep would otherwise block the UI thread for however
-	many replicates x models x seconds-per-fit that is; running it in a worker
-	keeps that cost off the critical path the same way run_fit_in_worker() and
-	run_domain_sensitivity_in_worker() do.
-
-	Cancellation has the same caveat as those two: the sweep is one synchronous
-	message handler in the worker with no yield points, so cancel() cannot
-	interrupt a replicate already being fit -- it only prevents acting on a
-	result that arrives after the caller has stopped caring. A cancelled sweep
-	still returns whatever it completed (resampleUncertainty()'s own
-	`cancelled`/replicatesSucceeded fields say how much).
-
-Input:
-	spec [object]: { models: [{modelId, config}, ...], values, histogram,
-	                 domain: {min,max}, binCount, peakRegions, replicates, seed,
-	                 intervalLevel, intervalMethod, perturbations } -- fields may
-	                 be omitted to use resampleUncertainty()'s own defaults
-	options [object]: optional { onProgress({completed,total,succeeded,failed}) }
-
-Output:
-	handle [object|null]: { promise, cancel } -- promise resolves to
-	                      resampleUncertainty()'s bundle -- or null when no
-	                      worker is available (caller should run the sweep on
-	                      the main thread instead)
-
-*/
-export function run_resample_uncertainty_in_worker(spec, { onProgress } = {}) {
-  const entry = acquire_worker();
-  if (!entry) return null;
-
-  const request_id = ++fit_worker_request_id;
-  const promise = new Promise((resolve, reject) => {
-    fit_worker_requests.set(request_id, { resolve, reject, onProgress, entry });
-  });
-
-  const {
-    models, values, histogram, domain, binCount, peakRegions,
-    replicates, seed, intervalLevel, intervalMethod, perturbations,
-  } = spec;
-  try {
-    entry.inFlight += 1;
-    entry.worker.postMessage(worker_message("resample_uncertainty", request_id, {
-      models, values, histogram, domain, binCount, peakRegions,
-      replicates, seed, intervalLevel, intervalMethod, perturbations,
-    }));
-  } catch (_) {
-    fit_worker_requests.delete(request_id);
-    entry.inFlight = Math.max(0, entry.inFlight - 1);
-    return null;
-  }
-
-  const cancel = () => {
-    try {
-      entry.worker.postMessage(worker_message("cancel", request_id));
-    } catch (_) {
-      // Worker already gone; nothing to cancel.
-    }
-  };
-
-  return { promise, cancel };
+export function run_resample_uncertainty_in_worker(spec, options = {}) {
+  return submit("resample_uncertainty", spec, options);
 }
