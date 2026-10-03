@@ -102,6 +102,8 @@ import { init_unload_guard } from "./session/unload_guard.js";
 import { init_draggable_modals } from "./ui/draggable_modal.js";
 import { init_modal_focus } from "./ui/modal_focus.js";
 import { init_compatibility } from "./ui/compatibility.js";
+import { init_theme, apply_theme, get_current_theme } from "./ui/theme.js";
+import { is_dark_theme } from "./plotting/data.js";
 
 /*
 
@@ -286,6 +288,7 @@ function init_app_bootstrap() {
 
 assert_required_dom();      // fail at startup with the exact missing required bindings
 init_tooltips();            // ui/hover_text.js tooltip runtime
+init_theme();               // ui/theme.js Light/Dark/System theme runtime
 init_app_bootstrap();       // main.js event wiring + initial render
 init_plot_listeners();      // plotting/axis_modal.js listener block
 init_plot_toolbar();        // plotting/plot_toolbar.js pan/zoom/export icon strip
@@ -301,7 +304,7 @@ init_remove_columns();      // ui/column_remove.js remove-columns mode
 init_session();             // session/core.js wiring + deferred try_autoload
 init_unload_guard();        // session/unload_guard.js beforeunload wiring
 init_draggable_modals();    // ui/draggable_modal.js drag-to-move for every modal card
-init_modal_focus();         // ui/modal_focus.js focus trap, background inertness, focus return
+init_modal_focus();         // modal Escape handling and focus return
 init_compatibility();       // ui/compatibility.js required/optional startup capability report
 document.querySelector("#status_diagnostics_copy")?.addEventListener("click", async () => {
   const text = document.querySelector("#status_diagnostics_log")?.textContent || "";
@@ -315,6 +318,12 @@ window.PhaseFinder = {
   get djf() { return get_pipeline(); },
   get pipeline() { return get_pipeline(); },
   plot: plot_api,
+  // Theme control API (UI-12)
+  theme: {
+    get current() { return get_current_theme(); },
+    set: apply_theme,
+    get is_dark() { return is_dark_theme(); },
+  },
   // Session modeling persistence (recompute-on-reload): collect the saveable
   // config and re-apply it. Surfaced for the E2E round-trip test.
   session: {

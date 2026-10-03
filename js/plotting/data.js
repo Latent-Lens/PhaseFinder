@@ -69,19 +69,41 @@ export function set_plot_bins(bins) {
   if (plot_bins_input) plot_bins_input.value = String(slider_index_for_bins(bins));
 }
 
+// UI-12: Detects whether dark theme is active (via data-theme attribute or prefers-color-scheme).
+export function is_dark_theme() {
+  if (typeof document === "undefined" || !document.documentElement) return false;
+  const theme = document.documentElement.getAttribute("data-theme");
+  if (theme === "dark") return true;
+  if (theme === "light") return false;
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)")?.matches === true;
+}
+
 // Colors come from the CSS custom properties in base.css so there is a single
 // source of truth for the whole app; the fallback is used only if a token is
 // missing. (Numeric sizes/widths below stay here as plain JS.)
 const css_color = (name, fallback) =>
-  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  (typeof document !== "undefined" && getComputedStyle(document.documentElement).getPropertyValue(name).trim()) || fallback;
 
-// Dean–Jett–Fox cell-cycle component colors.
-export const DJF_G1_COLOR = css_color("--djf_g1", "#95c1dc");
-export const DJF_S_COLOR = css_color("--djf_s", "#d5eec8");
-export const DJF_G2_COLOR = css_color("--djf_g2", "#ef8b8d");
-export const DJF_TOTAL_COLOR = css_color("--djf_total", "#111827");
-export const DJF_DEBRIS_COLOR = css_color("--djf_debris", "#a78bfa");
-export const DJF_AGG_COLOR = css_color("--djf_agg", "#f59e0b");
+// Dean–Jett–Fox cell-cycle component colors. Exported as live bindings (UI-12) so
+// that theme changes re-read from CSS custom properties and apply dynamically.
+export let DJF_G1_COLOR = css_color("--djf_g1", "#95c1dc");
+export let DJF_S_COLOR = css_color("--djf_s", "#d5eec8");
+export let DJF_G2_COLOR = css_color("--djf_g2", "#ef8b8d");
+export let DJF_TOTAL_COLOR = css_color("--djf_total", "#111827");
+export let DJF_DEBRIS_COLOR = css_color("--djf_debris", "#a78bfa");
+export let DJF_AGG_COLOR = css_color("--djf_agg", "#f59e0b");
+export let AXIS_LABEL_COLOR = css_color("--text", "#172033");
+
+export function refresh_plot_theme_colors() {
+  DJF_G1_COLOR = css_color("--djf_g1", "#95c1dc");
+  DJF_S_COLOR = css_color("--djf_s", "#d5eec8");
+  DJF_G2_COLOR = css_color("--djf_g2", "#ef8b8d");
+  DJF_TOTAL_COLOR = css_color("--djf_total", "#111827");
+  DJF_DEBRIS_COLOR = css_color("--djf_debris", "#a78bfa");
+  DJF_AGG_COLOR = css_color("--djf_agg", "#f59e0b");
+  AXIS_LABEL_COLOR = css_color("--text", "#172033");
+}
+
 // Fill opacity for the DJF component areas (0 = transparent, 1 = solid).
 export const DJF_FILL_OPACITY = 0.8;
 export const DJF_COMPONENT_LINE_WIDTH = 1.5; // G1/S/G2 outlines
@@ -97,7 +119,6 @@ export const PLOT_FALLBACK_HEIGHT = 420;
 export const AXIS_LINE_WIDTH = 1;
 export const AXIS_TICK_FONT_SIZE = 11;
 export const AXIS_TITLE_FONT_SIZE = 12;
-export const AXIS_LABEL_COLOR = css_color("--text", "#172033");
 // Extra px the double-click hit area extends past each axis's own margin
 // band, into the plot area, so opening the range modal doesn't require a
 // precise click on a thin tick line or label.
@@ -356,7 +377,7 @@ Output:
 */
 export function sample_color(index, total) {
   const hue = total > 1 ? Math.round((index * 360) / total) % 360 : 210;
-  return `hsl(${hue}, 70%, 34%)`;
+  return is_dark_theme() ? `hsl(${hue}, 70%, 66%)` : `hsl(${hue}, 70%, 34%)`;
 }
 
 /*
