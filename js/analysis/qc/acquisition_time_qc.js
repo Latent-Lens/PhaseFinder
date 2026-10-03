@@ -12,13 +12,14 @@
 // the same Time QC result contract.
 
 import { mad, median, quantileSorted } from "../math/stats.js";
+import { POLICY_THRESHOLDS } from "../policy_thresholds.js";
 
 // Keep the numerical helpers visible from this module for source-level
 // traceability and focused browser tests.
 export { mad, median, quantileSorted };
 
-export const DEFAULT_TIMER_RANGE = 32.6824;
-export const DEFAULT_TIME_QC_THRESHOLD = 4;
+export const DEFAULT_TIMER_RANGE = POLICY_THRESHOLDS.qc.timeQc.defaultTimerRange.value;
+export const DEFAULT_TIME_QC_THRESHOLD = POLICY_THRESHOLDS.qc.timeQc.defaultThreshold.value;
 
 // The robust-summary method's algorithm version and canonical effective options.
 // This is the single source of truth for the analysis-affecting robust-summary

@@ -201,6 +201,7 @@ export function serialize_session(s) {
         `model = ${toml_str(sample.model)}`,
         `model_version = ${toml_str(sample.model_version || "")}`,
         `peak_detection_status = ${toml_str(sample.peak_detection_status || "")}`,
+        `user_assigned_peak_identity = ${toml_str(sample.user_assigned_peak_identity || "")}`,
         `reviewed = ${Boolean(sample.reviewed)}`,
         `g1_left = ${sample.g1_left}`,
         `g1_right = ${sample.g1_right}`,
@@ -224,6 +225,20 @@ export function serialize_session(s) {
         `compensation_application_count = ${sample.compensation_application_count ?? 0}`,
         `qc_waivers = ${toml_str(sample.qc_waivers || '{}')}`,
         `qc_acknowledgements = ${toml_str(sample.qc_acknowledgements || '{}')}`,
+        ...(sample.policy_config_version ? [
+          `policy_config_version = ${toml_str(sample.policy_config_version)}`,
+        ] : []),
+        ...(sample.resampling_method ? [
+          `resampling_method = ${toml_str(sample.resampling_method)}`,
+          `resampling_interval_method = ${toml_str(sample.resampling_interval_method || '')}`,
+          `resampling_interval_level = ${Number.isFinite(sample.resampling_interval_level) ? sample.resampling_interval_level : 0.95}`,
+          `resampling_seed = ${Number.isFinite(sample.resampling_seed) ? sample.resampling_seed : 0}`,
+          `resampling_replicates_requested = ${Number.isFinite(sample.resampling_replicates_requested) ? sample.resampling_replicates_requested : 0}`,
+          `resampling_replicates_succeeded = ${Number.isFinite(sample.resampling_replicates_succeeded) ? sample.resampling_replicates_succeeded : 0}`,
+          `resampling_replicates_failed = ${Number.isFinite(sample.resampling_replicates_failed) ? sample.resampling_replicates_failed : 0}`,
+          `resampling_failures = ${toml_str(sample.resampling_failures || '[]')}`,
+          `resampling_definition = ${toml_str(sample.resampling_definition || '')}`,
+        ] : []),
         '');
     });
   }

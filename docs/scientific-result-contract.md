@@ -56,6 +56,41 @@ Model configuration must be an object. Model-specific constraint validation
 continues to be performed by each registered model before numerical fitting;
 moving those validators behind the common preflight is still outstanding.
 
+## Peak and S-phase plausibility warnings (GATE-03)
+
+These checks qualify a fit; they do not establish its true phase fractions.
+`regions_ploidy_mismatch` warns when fitted G1 lies more than 1.5 times above
+the lowest substantial detected peak. A candidate is substantial when its
+prominence is at least 25% of the maximum and its detector quality is at least
+75% of the maximum; the quality requirement avoids treating a narrow sub-G1
+debris spike as G1. `regions_possible_doublet` retains the detector's
+`POSSIBLE_G2_4N_DOUBLET_REVIEW_PEAKS` warning after a human accepts the lower
+pair. Both remain material warnings even if the fitted means are plausible.
+
+`s_phase_collapse` warns when fitted S is below 1%, at least 2% of observed
+events lie in the central 30–70% of the interval between fitted peak means,
+and those observed counts exceed the fitted S component there by more than
+fivefold. This central interval avoids testing the peak centers themselves.
+The rule is a conservative plausibility flag for visibly occupied inter-peak
+bins, not a replacement for a calibrated Watson fit. Missing histogram or
+component counts leave the check unevaluated rather than inventing evidence.
+Optimizer weak-identification warnings use the last evaluated Jacobian condition;
+the worst condition seen during early iterations remains in diagnostics but
+does not by itself describe the fitted optimum.
+
+The FlowJo comparison checks phase fractions and peak means, not histogram
+shape. In the 2026-09-23 358-fit snapshot, 54 DJF fits met all reference
+tolerances and all 54 still carried `limitedReliability`. For example, three
+No-QC reference-tolerance fits (`1982f`, `1982h`, `1982i`) had reduced
+deviance 645.4, 1365.5 and 665.8, respectively. Overdispersion and
+structured-residual warnings remain material at those values; reference
+agreement alone is not evidence that their fitted curves explain the events.
+In a 2026-09-24 No-QC rerun, all 45 available DJF/Watson fits emitted
+`weak_optimizer_identifiability`, `overdispersed_fit`,
+`residual_autocorrelation` and `residual_runs` as warnings. Reduced deviance
+ranged from 494.1 to 4940.8 for DJF (median 1294.5) and 96.3 to 236.2 for
+Watson (median 172.7), far beyond the existing threshold of 2.
+
 ## Pulse-geometry and scatter-gate operating envelopes (QC-CAL-01)
 
 No real, independently-labelled acquisition data exists in this project against
@@ -200,6 +235,30 @@ Practical consequence for users comparing against FlowJo: peak *channels*
 run ~1.6% low at G1 and ~3.2% low at G2. Phase *fractions* are far less
 affected, because both peaks move in the same direction.
 
+## G1/S fraction difference against FlowJo (MODEL-11)
+
+On 30 No-QC samples, PhaseFinder's DJF G1 fraction is a median 3.775 percentage
+points above FlowJo's fractions rescaled to 100%, while S is 4.040 points below.
+This difference is not explained by PhaseFinder assigning FlowJo's unassigned
+cells to the left tail of G1. Using each sample's FlowJo G1 mean minus 2.5
+FlowJo standard deviations as the left-foot cutoff, the fitted PhaseFinder G1
+Gaussian below it is a median 0.035% of biological area (maximum 0.841%).
+FlowJo's unassigned share is a median 6.75% (range 5.1–10.2%); the two shares
+have Pearson correlation −0.10 across the 30 samples. The per-sample values
+remain in the local-only `model11_left_foot_analysis_20260924.json` beside the
+private FlowJo reference.
+
+As a sensitivity check, a DJF refit starting at the next histogram edge above
+that left foot changed the median G1 difference from +3.775 to +3.160 points
+and the S difference from −4.040 to −2.406 points. It improved absolute G1
+error on 12/30 samples and S error on 15/30, while 12/30 cropped refits did
+not converge (the original fits all converged). This diagnostic is not a safe
+fit-range default. It also changes both the data range and the peak-flank
+estimate, so it cannot by itself identify which part of the G1/S boundary
+causes the remaining difference. The FlowJo unassigned population and its
+pre-fit gates are still undocumented (VALID-02/VALID-03); no phase-width or
+S-profile tuning was made from this comparison.
+
 ## Validated scope, unsupported inputs, and remaining differences (VALID-01 box 8)
 
 This section is the index, not a restatement — each claim below links to the
@@ -226,9 +285,11 @@ today.
   `tests/unit/driving_code/unit_tests_cell_cycle_dean_jett_fox.py`).
 - Interval coverage under resampling: 12 method/perturbation combinations x
   60 known-truth datasets x 80 replicates. `watson_classic` holds nominal
-  coverage on clean/low-count/boundary/weak-S; `dean_jett` under-covers where
-  MODEL-01/02's offset makes the peak hard; **contaminated data collapses
-  coverage to 0-13%** regardless of model or interval width
+  coverage near nominal on clean/low-count/weak-S, but boundary S coverage
+  is 88.3%; `dean_jett` also under-covers on difficult peaks. On contaminated
+  data, **G1/G2 coverage falls to 0–13.3%**; S coverage is 13.3% for
+  Watson Classic and 78.3% for Dean–Jett. Wider perturbations do not repair
+  the underlying model bias
   (`docs/audits/master_checklist.md`, UNC-01).
 - File-format-level input support (versions, datatypes, byte orders,
   transform/compensation policy, allocation limits) is its own matrix, not
@@ -237,13 +298,14 @@ today.
 
 **What has not been checked, stated plainly rather than left implicit:**
 
-- No redistributable dataset spanning multiple instruments, encodings, or
-  contaminant types exists in this project — the one dataset above is
-  single-instrument, single-encoding, and local-only
-  (`docs/audits/master_checklist.md`, VALID-01 box 3). Agreement figures in
-  this document should not be read as generalizing beyond that instrument.
-- Bootstrap/profile-likelihood intervals have not been compared against the
-  resampling-based intervals UNC-01 already ships (VALID-01 box 6).
+- Redistributable MACSQuant parser, Rodighiero fluorescence/negative-control,
+  and Amouzgar CyTOF fixtures provide instrument and encoding diversity
+  (`docs/audits/master_checklist.md`, VALID-01). They do not establish
+  matched multi-instrument cell-cycle truth or calibrated real QC masks.
+  The 30-sample FlowJo agreement figures remain specific to that reference.
+- Bootstrap/perturbation resampling is implemented and has simulation
+  coverage evidence under UNC-01. Independent biological interval coverage
+  and profile-likelihood comparison have not been established.
 - No domain-expert (cytometry/oncology) review has been performed. Nothing
   in this codebase or its docs should be described as "validated," clinical,
   diagnostic, or publication-grade until one has (VALID-01 box 9) — that

@@ -66,6 +66,7 @@ import { generateHistogram } from "../pipeline/dna_histogram.js";
 import { makeRng, quantileSorted, clamp, mean } from "../math/stats.js";
 import { inverseStandardNormalCdf, normalCdf } from "../math/gaussian_bin_mass.js";
 import { DEFAULT_SENSITIVITY_BIN_COUNTS, DEFAULT_DOMAIN_PERTURBATIONS } from "./domain_sensitivity.js";
+import { POLICY_THRESHOLDS } from "../policy_thresholds.js";
 
 // ---------------------------------------------------------------------------
 // Declared defaults. Each is policy with a stated reason, in the same spirit as
@@ -80,7 +81,7 @@ import { DEFAULT_SENSITIVITY_BIN_COUNTS, DEFAULT_DOMAIN_PERTURBATIONS } from "./
 // endpoints are being set by two or three individual replicates and the interval
 // is noise; MINIMUM_USABLE_REPLICATES enforces that floor.
 export const DEFAULT_REPLICATES = 200;
-export const MINIMUM_USABLE_REPLICATES = 40;
+export const MINIMUM_USABLE_REPLICATES = POLICY_THRESHOLDS.resampling.minimumUsableReplicates.value;
 
 // A fixed default seed, not Date.now(). Two runs of the same analysis on the
 // same inputs must produce the same interval, or the number is not a
@@ -88,7 +89,7 @@ export const MINIMUM_USABLE_REPLICATES = 40;
 // deliberate, recorded choice.
 export const DEFAULT_SEED = 20260819;
 
-export const DEFAULT_INTERVAL_LEVEL = 0.95;
+export const DEFAULT_INTERVAL_LEVEL = POLICY_THRESHOLDS.resampling.defaultIntervalLevel.value;
 
 // Peak-region edge jitter, as a fraction of that region's width. 10% is about
 // how far apart two analysts' hand-drawn regions land on the same peak; it is
@@ -109,14 +110,14 @@ export const BIN_COUNT_NEIGHBOURHOOD_FACTOR = 2;
 // ~2.8pp, so the threshold is comfortably outside Monte Carlo noise. The number
 // is a reporting policy, not an inference: a 79%/21% split is a genuinely
 // ambiguous comparison and should be reported as one.
-export const SELECTION_STABILITY_THRESHOLD = 0.8;
+export const SELECTION_STABILITY_THRESHOLD = POLICY_THRESHOLDS.resampling.selectionStabilityThreshold.value;
 
 // Replicate failures. A few percent is normal -- some perturbed histograms are
 // genuinely harder and the optimizer stops short. Past 20% the surviving
 // replicates are a biased subsample (the easy ones), and the interval is
 // measuring the easy cases, not the sample.
-export const FAILURE_RATE_WARNING = 0.05;
-export const FAILURE_RATE_CRITICAL = 0.20;
+export const FAILURE_RATE_WARNING = POLICY_THRESHOLDS.resampling.failureRateWarning.value;
+export const FAILURE_RATE_CRITICAL = POLICY_THRESHOLDS.resampling.failureRateCritical.value;
 
 // Keeps the bundle small enough to structured-clone out of the fit worker while
 // still showing a reader what went wrong.

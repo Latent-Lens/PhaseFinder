@@ -36,6 +36,7 @@ import {
 } from "./modeling_state.js";
 import { set_status_bar } from "../../ui/status_channels.js";
 import { deep_clone } from "../../util/clone.js";
+import { POLICY_THRESHOLDS } from "../policy_thresholds.js";
 
 let initialized = false;
 let recalc_busy = false;
@@ -62,9 +63,9 @@ const recalc_detail = document.querySelector("#bin_recalc_detail");
 // Events-per-bin thresholds. Below MIN the histogram is too sparse (Poisson
 // noise invents peaks); between MIN and COMFORTABLE it is usable but getting
 // noisy. 128 bins is flagged coarse regardless of counts (G1/S/G2 can merge).
-const MIN_EVENTS_PER_BIN = 20;
-const COMFORTABLE_EVENTS_PER_BIN = 50;
-const COARSE_BIN_COUNT = 128;
+const MIN_EVENTS_PER_BIN = POLICY_THRESHOLDS.binning.minEventsPerBin.value;
+const COMFORTABLE_EVENTS_PER_BIN = POLICY_THRESHOLDS.binning.comfortableEventsPerBin.value;
+const COARSE_BIN_COUNT = POLICY_THRESHOLDS.binning.coarseBinCount.value;
 
 const RISK_COLORS = {
   safe: "#22c55e",

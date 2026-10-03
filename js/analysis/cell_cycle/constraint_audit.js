@@ -17,16 +17,18 @@
 // warning vocabulary derived from it), and the individual joint auditors for
 // direct testing.
 
+import { POLICY_THRESHOLDS } from "../policy_thresholds.js";
+
 // A box bound counts as ACTIVE when the fitted value sits within this relative
 // distance of it -- the optimizer wanted to keep moving and the constraint is
 // what stopped it. Matches diagnostics.js's boundaryHitWarnings epsilon so the
 // two agree on what "at a bound" means.
-export const ACTIVE_BOUND_EPSILON = 1e-3;
+export const ACTIVE_BOUND_EPSILON = POLICY_THRESHOLDS.constraints.activeBoundEpsilon.value;
 
 // A joint (non-box) constraint counts as violated beyond this absolute residual.
 // Projection makes these satisfiable by construction, so anything above this is
 // a genuine defect in the projection, not round-off.
-export const JOINT_CONSTRAINT_TOLERANCE = 1e-9;
+export const JOINT_CONSTRAINT_TOLERANCE = POLICY_THRESHOLDS.constraints.jointConstraintTolerance.value;
 
 function normalize_bound(bound) {
   if (Array.isArray(bound)) return { min: bound[0], max: bound[1] };
