@@ -14,7 +14,6 @@ function ensure_tip() {
   tip = document.createElement("div");
   tip.id = "plot_curve_tooltip";
   tip.className = "plot_curve_tooltip";
-  tip.setAttribute("aria-hidden", "true");
   document.body.appendChild(tip);
   return tip;
 }
@@ -98,7 +97,6 @@ Output:
 export function show_curve_tooltip(event, entry, bin = null) {
   const el = ensure_tip();
   el.innerHTML = tooltip_html(entry, bin);
-  el.setAttribute("aria-hidden", "false");
   el.classList.add("visible");
   position_tip(event);
 }
@@ -106,5 +104,4 @@ export function show_curve_tooltip(event, entry, bin = null) {
 export function hide_curve_tooltip() {
   if (!tip) return;
   tip.classList.remove("visible");
-  tip.setAttribute("aria-hidden", "true");
 }
