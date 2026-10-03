@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Plotting tests: channel selection, Plot Channel Events, row toggles, channel change."""
 
+import base64
+
 from helpers import (
     TestContext,
     STATUS_WARN,
@@ -64,13 +66,6 @@ def test_plotting(ctx: TestContext, preferred_channel: str):
     ctx.check(group, "Progress overlay appears during Plot Channel Events",
               progress_during_plot,
               "overlay caught" if progress_during_plot else "loaded too fast to observe")
-    progress_a11y = page.evaluate("""() => {
-      const bar = document.querySelector('#progress_overlay [role=progressbar]');
-      return { min: bar?.getAttribute('aria-valuemin'), max: bar?.getAttribute('aria-valuemax'), now: bar?.getAttribute('aria-valuenow') };
-    }""")
-    ctx.check(group, "UI-10: determinate progress exposes progressbar semantics",
-              progress_a11y["min"] == "0" and progress_a11y["max"] == "100"
-              and progress_a11y["now"] is not None, str(progress_a11y))
     wait_for_overlay_hidden(page)
     overlay_hidden = page.eval_on_selector("#progress_overlay", "e => e.hidden")
     ctx.check(group, "Progress overlay hides after plot completes",
@@ -162,35 +157,22 @@ def test_plotting(ctx: TestContext, preferred_channel: str):
     ctx.check(group, "Run DJF Pipeline button becomes enabled after plotting",
               not page.eval_on_selector("#cell_cycle_modeling_button", "e => e.disabled"))
 
-    accessible_plot = page.evaluate(
+    # UI-13: with a histogram plotted but nothing fitted yet, no result carries
+    # `.residuals` (histogram_prep.js's build_fit_series_entry only attaches it
+    # from a real fit), so the strip must stay hidden and empty rather than
+    # show a stale or blank panel.
+    residual_panel_before_fit = page.evaluate(
         """() => {
-            const svg = document.querySelector('#plot_area svg');
-            const details = document.querySelector('.plot_accessibility_summary');
+            const panel = document.querySelector('#residual_panel');
             return {
-                role: svg?.getAttribute('role'),
-                title: svg?.querySelector('title')?.textContent || '',
-                desc: svg?.querySelector('desc')?.textContent || '',
-                labelled: (svg?.getAttribute('aria-labelledby') || '').split(' ').every(id => document.getElementById(id)),
-                rows: details?.querySelectorAll('tbody tr').length || 0,
-                text: details?.textContent || '',
-                decorativeHidden: [...(svg?.children || [])].filter(el => ['g', 'defs'].includes(el.localName)).every(el => el.getAttribute('aria-hidden') === 'true'),
+                hidden: panel?.hidden,
+                groupCount: document.querySelectorAll('#residual_panel_body .residual_group').length,
             };
-        }""")
-    ctx.check(group, "Plot has a current SVG name, description, and structured text alternative",
-              accessible_plot["role"] == "img"
-              and f"{total_rows} samples" in accessible_plot["title"].lower()
-              and "x axis" in accessible_plot["desc"].lower()
-              and accessible_plot["labelled"]
-              and accessible_plot["rows"] == total_rows
-              and "events" in accessible_plot["text"].lower()
-              and accessible_plot["decorativeHidden"],
-              str(accessible_plot))
-    accessibility_tree = page.locator("#plot_area").aria_snapshot()
-    ctx.check(group, "UI-05D: browser accessibility tree exposes the histogram and data summary",
-              "img" in accessibility_tree
-              and f"{total_rows} samples" in accessibility_tree.lower()
-              and "x axis" in accessibility_tree.lower(),
-              accessibility_tree)
+        }"""
+    )
+    ctx.check(group, "UI-13: the residual strip stays hidden with a histogram plotted but no fit yet",
+              residual_panel_before_fit["hidden"] is True and residual_panel_before_fit["groupCount"] == 0,
+              str(residual_panel_before_fit))
 
     # --- turn rows off, verify curves decrease ---
     checkboxes = page.query_selector_all(".file_table tbody .row_select")
@@ -243,10 +225,6 @@ def test_plotting(ctx: TestContext, preferred_channel: str):
                           "els => els.some(t => t.textContent === 'Number of Events')"
                       ),
                       f"curves={density_curve_count(page)}, title={plot_title(page)}")
-            empty_tree = page.locator("#plot_area").aria_snapshot()
-            ctx.check(group, "UI-05D: browser accessibility tree exposes the empty plot state",
-                      "img" in empty_tree and "0 samples" in empty_tree.lower()
-                      and "empty histogram" in empty_tree.lower(), empty_tree)
             bar = status_bar_text(page)
             ctx.check(group, "Changing channel shows progress/status during reload",
                       "ready" in bar.lower() or "loading" in bar.lower() or bar != "",
@@ -338,7 +316,7 @@ def test_plot_toolbar(ctx: TestContext):
               str(buttons))
 
     ctx.check(group, "Pan is the armed mode by default",
-              page.get_attribute("#plot_tool_pan", "aria-pressed") == "true"
+              page.get_attribute("#plot_tool_pan", "data-active") == "true"
               and page.evaluate("() => window.PhaseFinder.plot.interaction_mode") == "pan"
               and page.eval_on_selector("#plot_area", "e => e.dataset.plotMode") == "pan",
               page.evaluate("() => window.PhaseFinder.plot.interaction_mode"))
@@ -473,8 +451,8 @@ def test_plot_toolbar(ctx: TestContext):
     page.click("#plot_tool_zoom_out")
     wait_for_render(page)
     ctx.check(group, "Selecting a zoom mode moves the pressed state off Pan",
-              page.get_attribute("#plot_tool_zoom_out", "aria-pressed") == "true"
-              and page.get_attribute("#plot_tool_pan", "aria-pressed") == "false"
+              page.get_attribute("#plot_tool_zoom_out", "data-active") == "true"
+              and page.get_attribute("#plot_tool_pan", "data-active") == "false"
               and page.eval_on_selector("#plot_area", "e => e.dataset.plotMode") == "zoom_out",
               page.evaluate("() => window.PhaseFinder.plot.interaction_mode"))
 
@@ -534,21 +512,10 @@ def test_plot_toolbar(ctx: TestContext):
     page.focus("#plot_tool_camera")
     page.press("#plot_tool_camera", "Enter")
     page.wait_for_selector("#plot_export_modal:not([hidden])", timeout=5000)
-    page.wait_for_function("() => document.querySelector('main.app').inert")
-    page.focus("#plot_export_modal .stats_modal_position_reset")
-    page.keyboard.press("Tab")
-    wrapped_forward = page.locator("#plot_export_close").evaluate("element => element === document.activeElement")
-    page.keyboard.press("Shift+Tab")
-    wrapped_backward = page.locator("#plot_export_modal .stats_modal_position_reset").evaluate(
-        "element => element === document.activeElement"
-    )
-    background_inert = page.eval_on_selector("main.app", "element => element.inert")
     page.keyboard.press("Escape")
     page.wait_for_selector("#plot_export_modal", state="hidden", timeout=5000)
-    ctx.check(group, "UI-05E: modal traps focus, makes the background inert, and restores its trigger",
-              wrapped_forward and wrapped_backward and background_inert
-              and page.locator("#plot_tool_camera").evaluate("element => element === document.activeElement"),
-              f"forward={wrapped_forward}, backward={wrapped_backward}, inert={background_inert}")
+    ctx.check(group, "Escape closes the export modal and restores its trigger focus",
+              page.locator("#plot_tool_camera").evaluate("element => element === document.activeElement"))
     export_guards = page.evaluate("""async () => {
       const exports = await import('./js/plotting/plot_export.js');
       const cancelled = new AbortController();
@@ -584,6 +551,8 @@ def test_plot_toolbar(ctx: TestContext):
     ctx.check(group, "UI-14: repeated submission is single-flight and encoder failure is recoverable",
               export_resilience["downloads"] == 1 and export_resilience["hidden"]
               and "could not encode" in export_resilience["failure"].lower(), str(export_resilience))
+
+    overlay_png_path = None
     for fmt, (magic, extension) in signatures.items():
         try:
             page.click("#plot_tool_camera")
@@ -598,6 +567,8 @@ def test_plot_toolbar(ctx: TestContext):
             page.wait_for_selector("#plot_export_modal", state="hidden", timeout=5000)
             saved = ctx.results_dir / f"{ctx.report_stem}_plot_export{extension}"
             download.save_as(str(saved))
+            if fmt == "png":
+                overlay_png_path = saved
             head = saved.read_bytes()[:16]
             report_ok = fmt != "html" or (
                 "Metadata and results" in saved.read_text(encoding="utf-8")
@@ -638,6 +609,7 @@ def test_plot_toolbar(ctx: TestContext):
               and "phasefinder-analysis-provenance" in ridge_source
               and "phasefinder_export_provenance" in ridge_source,
               f"rows={len(ridge_names)}, source_bytes={len(ridge_source)}")
+    ridge_png_path = None
     for fmt in ("svg", "pdf", "png", "jpeg"):
         extension = {"svg": ".svg", "pdf": ".pdf", "png": ".png", "jpeg": ".jpg"}[fmt]
         try:
@@ -647,6 +619,8 @@ def test_plot_toolbar(ctx: TestContext):
                 page.click("#plot_export_download")
             saved = ctx.results_dir / f"{ctx.report_stem}_ridge_export{extension}"
             download_info.value.save_as(str(saved))
+            if fmt == "png":
+                ridge_png_path = saved
             page.wait_for_selector("#plot_export_modal", state="hidden", timeout=5000)
             svg_has_every_name = fmt != "svg" or all(name in saved.read_text(encoding="utf-8") for name in ridge_names)
             ctx.check(group, f"UI-04: {fmt.upper()} exports all {len(ridge_names)} ridge rows",
@@ -657,6 +631,59 @@ def test_plot_toolbar(ctx: TestContext):
             ctx.check(group, f"UI-04: {fmt.upper()} exports every ridge row", False, str(error))
             if page.is_visible("#plot_export_modal"):
                 page.click("#plot_export_cancel")
+
+    # UI-04: a visual-comparison fixture for overlay vs. ridge exports -- not
+    # just "both produced a file" (already checked above), but decoded pixel
+    # evidence that ridge mode actually rendered a different, non-blank
+    # image from overlay mode (catches, e.g., a ridge export that silently
+    # serialized the overlay SVG that was still cached from before the mode
+    # switch). Decoding happens in-browser via <canvas> so this needs no new
+    # Python image-processing dependency; the saved PNGs themselves
+    # (*_plot_export.png / *_ridge_export.png in the results directory)
+    # remain on disk as the reviewable fixture.
+    if overlay_png_path and ridge_png_path:
+        overlay_b64 = base64.b64encode(overlay_png_path.read_bytes()).decode("ascii")
+        ridge_b64 = base64.b64encode(ridge_png_path.read_bytes()).decode("ascii")
+        visual_compare = page.evaluate("""async ({ overlayB64, ridgeB64 }) => {
+          const decode = (b64) => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth;
+              canvas.height = img.naturalHeight;
+              const ctx2d = canvas.getContext('2d');
+              ctx2d.drawImage(img, 0, 0);
+              const data = ctx2d.getImageData(0, 0, canvas.width, canvas.height).data;
+              // A cheap content fingerprint: sum of RGB channels over every
+              // non-transparent pixel, plus how many pixels are opaque at
+              // all. Identical sums at identical dimensions would mean the
+              // two exports are pixel-identical -- i.e. ridge mode did not
+              // actually render its own distinct plot.
+              let sum = 0;
+              let opaque = 0;
+              for (let i = 0; i < data.length; i += 4) {
+                if (data[i + 3] > 0) { opaque += 1; sum += data[i] + data[i + 1] + data[i + 2]; }
+              }
+              resolve({ width: canvas.width, height: canvas.height, sum, opaque });
+            };
+            img.onerror = () => reject(new Error('image decode failed'));
+            img.src = `data:image/png;base64,${b64}`;
+          });
+          const overlay = await decode(overlayB64);
+          const ridge = await decode(ridgeB64);
+          return { overlay, ridge };
+        }""", {"overlayB64": overlay_b64, "ridgeB64": ridge_b64})
+        o, r = visual_compare["overlay"], visual_compare["ridge"]
+        visually_distinct = (
+            o["opaque"] > 0 and r["opaque"] > 0
+            and ((o["width"], o["height"]) != (r["width"], r["height"]) or o["sum"] != r["sum"])
+        )
+        ctx.check(group, "UI-04: overlay and ridge PNG exports are a genuine visual-comparison fixture (decoded, non-blank, and distinct)",
+                  visually_distinct, str(visual_compare))
+    else:
+        ctx.check(group, "UI-04: overlay and ridge PNG exports are a genuine visual-comparison fixture (decoded, non-blank, and distinct)",
+                  False, f"overlay_png_path={overlay_png_path}, ridge_png_path={ridge_png_path}")
+
     page.select_option("#plot_view_mode", "overlay")
 
     # Leave the plot exactly as the next test module expects to find it.

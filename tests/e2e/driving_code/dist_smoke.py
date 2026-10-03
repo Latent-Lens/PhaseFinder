@@ -85,7 +85,7 @@ def main():
 
             enter_modeling_mode(page)
             for stage, selector in enumerate(("#qc_structural", "#qc_time", "#qc_cellgate", "#qc_singlet")):
-                if page.get_attribute(selector, "aria-pressed") != "true":
+                if page.get_attribute(selector, "data-active") != "true":
                     page.click(selector)
                     if stage == 0:
                         page.click("#structural_qc_apply")

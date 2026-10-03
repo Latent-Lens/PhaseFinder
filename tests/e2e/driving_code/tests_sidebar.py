@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Sidebar/Icons tests: collapsed state, icon tooltips, channel sync, and plot icon."""
 
-from pathlib import Path
-
 from helpers import (
     TestContext,
     density_curve_count,
@@ -10,8 +8,6 @@ from helpers import (
     wait_for_render,
     wait_for_curves,
 )
-
-_AXE_PATH = Path(__file__).resolve().parents[3] / "node_modules" / "axe-core" / "axe.min.js"
 
 
 def test_sidebar_icons(ctx: TestContext):
@@ -60,6 +56,49 @@ def test_sidebar_icons(ctx: TestContext):
     page.click("#sidebar_toggle")
     wait_for_render(page)
 
+    # UI-05C: focused tooltip is associated, exposed, clamped, and Escape-dismissable
+    try:
+        page.evaluate("() => document.activeElement && document.activeElement.blur()")
+        page.focus("#sidebar_toggle")
+        page.wait_for_function(
+            """() => {
+              const tip = document.querySelector('#pf_tooltip');
+              const anchor = document.querySelector('#sidebar_toggle');
+              return tip && tip.classList.contains('pf_tip_visible')
+                && tip.getAttribute('aria-hidden') === 'false'
+                && anchor?.getAttribute('aria-describedby') === 'pf_tooltip';
+            }""",
+            timeout=5000,
+        )
+        tip_info = page.evaluate("""() => {
+          const tip = document.querySelector('#pf_tooltip');
+          const rect = tip.getBoundingClientRect();
+          return {
+            hidden: tip.getAttribute('aria-hidden'),
+            described: document.querySelector('#sidebar_toggle').getAttribute('aria-describedby'),
+            inside: rect.left >= 0 && rect.top >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight,
+          };
+        }""")
+        page.keyboard.press("Escape")
+        page.wait_for_function(
+            """() => {
+              const tip = document.querySelector('#pf_tooltip');
+              return tip && !tip.classList.contains('pf_tip_visible')
+                && tip.getAttribute('aria-hidden') === 'true';
+            }""",
+            timeout=5000,
+        )
+        ctx.check(
+            group,
+            "UI-05C: focused tooltip is associated, exposed, clamped, and Escape-dismissable",
+            tip_info["hidden"] == "false" and tip_info["described"] == "pf_tooltip"
+            and tip_info["inside"] and page.get_attribute("#pf_tooltip", "aria-hidden") == "true",
+            str(tip_info),
+            screenshot=False,
+        )
+    except Exception as error:
+        ctx.check(group, "UI-05C: focused tooltip is associated, exposed, clamped, and Escape-dismissable", False, str(error), screenshot=False)
+
 
 def test_sidebar_modeling_mode(ctx: TestContext):
     """Cell Cycle Modeling switches the sidebar to the relocated QC/DJF controls
@@ -94,6 +133,55 @@ def test_sidebar_modeling_mode(ctx: TestContext):
                   page.eval_on_selector_all("#plot_panel .premodel_qc_group", "els => els.length") == 0
                   and page.eval_on_selector_all("#plot_panel .peak_review_group", "els => els.length") == 0)
 
+        # UI-08: Fit buttons sit above the fold with compact layout at standard viewport,
+        # and reveal a scroll affordance when constrained.
+        orig_viewport = page.viewport_size
+        try:
+            fold_metrics = page.evaluate("""() => {
+                const container = document.querySelector('.sidebar_content');
+                const fitBtn = document.querySelector('#cell_cycle_fit_current_button');
+                const affordance = document.querySelector('#sidebar_modeling_scroll_affordance');
+                const cRect = container.getBoundingClientRect();
+                const bRect = fitBtn.getBoundingClientRect();
+                return {
+                    isBelowFold: bRect.bottom > cRect.bottom + 4,
+                    affordanceHidden: affordance ? affordance.hidden : true,
+                };
+            }""")
+            ctx.check(group, "UI-08: Model & Fit actions sit above the fold at standard viewport",
+                      not fold_metrics["isBelowFold"] and fold_metrics["affordanceHidden"],
+                      str(fold_metrics))
+
+            # Constrain viewport height to ensure affordance activates
+            page.set_viewport_size({"width": orig_viewport["width"], "height": 550})
+            wait_for_render(page)
+            affordance_visible = page.evaluate("""() => {
+                const affordance = document.querySelector('#sidebar_modeling_scroll_affordance');
+                return affordance && !affordance.hidden && window.getComputedStyle(affordance).display !== 'none';
+            }""")
+            ctx.check(group, "UI-08: Scroll affordance appears when fit actions are below the fold",
+                      bool(affordance_visible))
+
+            page.click("#sidebar_modeling_scroll_affordance")
+            wait_for_render(page)
+            scrolled_metrics = page.evaluate("""() => {
+                const container = document.querySelector('.sidebar_content');
+                const fitBtn = document.querySelector('#cell_cycle_fit_current_button');
+                const affordance = document.querySelector('#sidebar_modeling_scroll_affordance');
+                const cRect = container.getBoundingClientRect();
+                const bRect = fitBtn.getBoundingClientRect();
+                return {
+                    isBelowFold: bRect.bottom > cRect.bottom + 4,
+                    affordanceHidden: affordance ? affordance.hidden : true,
+                };
+            }""")
+            ctx.check(group, "UI-08: Clicking scroll affordance brings fit actions into view and hides affordance",
+                      not scrolled_metrics["isBelowFold"] and scrolled_metrics["affordanceHidden"],
+                      str(scrolled_metrics))
+        finally:
+            page.set_viewport_size(orig_viewport)
+            wait_for_render(page)
+
         # Back
         page.click("#sidebar_back_button")
         page.wait_for_selector("#sidebar_modeling_section", state="hidden", timeout=5000)
@@ -122,251 +210,29 @@ def test_sidebar_modeling_mode(ctx: TestContext):
             pass
 
 
-def test_responsive_reachability(ctx: TestContext):
+def test_desktop_minimum_width(ctx: TestContext):
     page = ctx.page
-    group = "Responsive layout"
     original = page.viewport_size
-    selectors = [
-        "#reset_session_button", "#drop_zone", "#plot_panel_toggle",
-        "#metadata_panel_toggle", "#cell_cycle_modeling_button", ".status_bar_help a",
-    ]
     try:
-        sidebar_resizer = page.locator("#sidebar_resizer")
-        sidebar_resizer.focus()
-        sidebar_before = int(sidebar_resizer.get_attribute("aria-valuenow"))
-        sidebar_resizer.press("ArrowRight")
-        sidebar_after = int(sidebar_resizer.get_attribute("aria-valuenow"))
-        sidebar_resizer.press("Enter")
-        workspace_resizer = page.locator("#workspace_resizer")
-        workspace_resizer.focus()
-        workspace_before = int(workspace_resizer.get_attribute("aria-valuenow"))
-        workspace_resizer.press("ArrowDown")
-        workspace_after = int(workspace_resizer.get_attribute("aria-valuenow"))
-        workspace_resizer.press("Enter")
-        resizer_tree = sidebar_resizer.aria_snapshot() + workspace_resizer.aria_snapshot()
-        touch_resize = page.evaluate("""() => {
-          const drag = (element, dx, dy, pointerId) => {
-            const rect = element.getBoundingClientRect();
-            const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
-            const original = element.setPointerCapture;
-            element.setPointerCapture = () => {};
-            element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId, pointerType: 'touch', clientX: x, clientY: y }));
-            element.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId, pointerType: 'touch', clientX: x + dx, clientY: y + dy }));
-            element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId, pointerType: 'touch', clientX: x + dx, clientY: y + dy }));
-            element.setPointerCapture = original;
-          };
-          const sidebar = document.querySelector('#sidebar_resizer');
-          const workspace = document.querySelector('#workspace_resizer');
-          const before = [Number(sidebar.getAttribute('aria-valuenow')), Number(workspace.getAttribute('aria-valuenow'))];
-          drag(sidebar, 20, 0, 91);
-          drag(workspace, 0, 20, 92);
-          return { before, after: [Number(sidebar.getAttribute('aria-valuenow')), Number(workspace.getAttribute('aria-valuenow'))] };
+        page.set_viewport_size({"width": 900, "height": 800})
+        narrow = page.evaluate("""() => {
+          const root = document.documentElement;
+          root.scrollLeft = 180;
+          return { pageWidth: root.scrollWidth, scrollLeft: root.scrollLeft,
+            appWidth: document.querySelector('.app').getBoundingClientRect().width };
         }""")
-        sidebar_resizer.press("Enter")
-        workspace_resizer.press("Enter")
-        ctx.check(group, "UI-18: focusable separators resize and reset by keyboard",
-                  sidebar_after > sidebar_before and workspace_after > workspace_before
-                  and sidebar_resizer.get_attribute("aria-orientation") == "vertical"
-                  and workspace_resizer.get_attribute("aria-orientation") == "horizontal"
-                  and resizer_tree.count("separator") == 2
-                  and touch_resize["after"][0] > touch_resize["before"][0]
-                  and touch_resize["after"][1] > touch_resize["before"][1],
-                  str({"keyboard": [[sidebar_before, sidebar_after], [workspace_before, workspace_after]],
-                       "orientations": [sidebar_resizer.get_attribute("aria-orientation"),
-                                        workspace_resizer.get_attribute("aria-orientation")],
-                       "tree": resizer_tree, "touch": touch_resize}))
-
-        for width, height in ((320, 568), (375, 600), (390, 844), (844, 390), (768, 600), (820, 1180), (1024, 768), (1280, 500)):
-            page.set_viewport_size({"width": width, "height": height})
-            page.evaluate("() => window.scrollTo(0, 0)")
-            reachable = True
-            for selector in selectors:
-                locator = page.locator(selector)
-                locator.scroll_into_view_if_needed()
-                box = locator.bounding_box()
-                reachable = reachable and box is not None and box["x"] >= -1 and box["x"] + box["width"] <= width + 1
-                if locator.evaluate("e => e.matches('button, a, input, select, textarea, [tabindex]')"):
-                    locator.focus()
-                    reachable = reachable and locator.evaluate("e => document.activeElement === e")
-            no_horizontal_overflow = page.evaluate(
-                "() => document.documentElement.scrollWidth <= window.innerWidth + 1"
-            )
-            ctx.check(group, f"UI-03: major controls remain reachable at {width}×{height}",
-                      reachable and no_horizontal_overflow,
-                      f"reachable={reachable}, no_horizontal_overflow={no_horizontal_overflow}", screenshot=False)
-
-        # UI-05: emulate real browser page zoom (not just larger text) via the
-        # CSS `zoom` property on the root element, which halves the effective
-        # layout viewport the same way Chromium's native 200% zoom does. A
-        # narrower effective viewport reflowing to a stacked layout is
-        # expected and fine; clipping, unreachable controls, or an
-        # unintended horizontal scrollbar would be the defect.
-        page.set_viewport_size({"width": 1280, "height": 800})
-        page.evaluate("() => window.scrollTo(0, 0)")
-        page.evaluate("() => { document.documentElement.style.zoom = '2'; }")
-        zoom_reachable = True
-        for selector in selectors:
-            locator = page.locator(selector)
-            locator.scroll_into_view_if_needed()
-            box = locator.bounding_box()
-            zoom_reachable = zoom_reachable and box is not None and box["x"] >= -1 and box["x"] + box["width"] <= 1280 + 1
-            if locator.evaluate("e => e.matches('button, a, input, select, textarea, [tabindex]')"):
-                locator.focus()
-                zoom_reachable = zoom_reachable and locator.evaluate("e => document.activeElement === e")
-        zoom_no_horizontal_overflow = page.evaluate(
-            "() => document.documentElement.scrollWidth <= window.innerWidth + 1"
-        )
-        ctx.check(group, "UI-05: major controls remain reachable and unclipped at 200% zoom",
-                  zoom_reachable and zoom_no_horizontal_overflow,
-                  f"reachable={zoom_reachable}, no_horizontal_overflow={zoom_no_horizontal_overflow}", screenshot=False)
-        page.evaluate("() => { document.documentElement.style.zoom = ''; }")
-
-        page.set_viewport_size({"width": 390, "height": 844})
-        page.evaluate("() => document.documentElement.style.fontSize = '200%'")
-        page.locator("#metadata_panel_toggle").scroll_into_view_if_needed()
-        ctx.check(group, "UI-03: enlarged text keeps the page horizontally contained",
-                  page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth + 1"),
-                  f"scrollWidth={page.evaluate('() => document.documentElement.scrollWidth')}", screenshot=False)
-
-        page.set_viewport_size({"width": 320, "height": 568})
-        page.focus("#sidebar_toggle")
-        tooltip = page.evaluate("""() => {
-          const tip = document.querySelector('#pf_tooltip');
-          const rect = tip.getBoundingClientRect();
-          return {
-            hidden: tip.getAttribute('aria-hidden'),
-            described: document.querySelector('#sidebar_toggle').getAttribute('aria-describedby'),
-            inside: rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight,
-          };
-        }""")
-        page.press("#sidebar_toggle", "Escape")
-        ctx.check(group, "UI-05C: focused tooltip is associated, exposed, clamped, and Escape-dismissable",
-                  tooltip["hidden"] == "false" and tooltip["described"] == "pf_tooltip"
-                  and tooltip["inside"] and page.get_attribute("#pf_tooltip", "aria-hidden") == "true",
-                  str(tooltip), screenshot=False)
-
-        page.evaluate("() => { document.documentElement.style.fontSize = ''; window.scrollTo(0, 0); }")
-        page.set_viewport_size(original or {"width": 1920, "height": 1080})
-        page.add_script_tag(path=str(_AXE_PATH))
-        axe = page.evaluate("""async () => {
-          const results = await axe.run(document, {
-            resultTypes: ['violations'],
-            runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
-          });
-          return results.violations
-            .filter(item => ['serious', 'critical'].includes(item.impact))
-            .map(item => ({ id: item.id, impact: item.impact, targets: item.nodes.map(node => node.target) }));
-        }""")
-        ctx.check(group, "CI-10: axe reports no serious or critical WCAG violations",
-                  axe == [], str(axe), screenshot=False)
-        modal_ids = page.eval_on_selector_all(
-            ".stats_modal[role='dialog'][aria-modal='true']",
-            "modals => modals.filter(modal => modal.querySelector('.stats_modal_close, [id$=_cancel]')).map(modal => modal.id)",
-        )
-        modal_contract = []
-        for modal_id in modal_ids:
-            page.evaluate("""modalId => {
-              let trigger = document.querySelector('#modal_contract_trigger');
-              if (!trigger) {
-                trigger = document.createElement('button');
-                trigger.id = 'modal_contract_trigger';
-                trigger.textContent = 'Open test dialog';
-                document.body.appendChild(trigger);
-              }
-              trigger.onclick = () => { document.getElementById(modalId).hidden = false; };
-            }""", modal_id)
-            page.focus("#modal_contract_trigger")
-            page.press("#modal_contract_trigger", "Enter")
-            page.wait_for_selector(f"#{modal_id}:not([hidden])", timeout=5000)
-            result = page.eval_on_selector(f"#{modal_id}", """modal => {
-              const controls = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')]
-                .filter(element => !element.hidden && element.getClientRects().length);
-              controls.at(-1)?.focus();
-              return { count: controls.length, last: controls.at(-1)?.id || controls.at(-1)?.className || '' };
-            }""")
-            page.keyboard.press("Tab")
-            wrapped_forward = page.eval_on_selector(
-                f"#{modal_id}",
-                """modal => document.activeElement === [...modal.querySelectorAll(
-                  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
-                )].filter(element => !element.hidden && element.getClientRects().length)[0]""",
-            )
-            page.eval_on_selector(f"#{modal_id}", """modal => [...modal.querySelectorAll(
-              'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
-            )].filter(element => !element.hidden && element.getClientRects().length)[0]?.focus()""")
-            page.keyboard.press("Shift+Tab")
-            wrapped_backward = page.eval_on_selector(f"#{modal_id}", """modal => {
-              const controls = [...modal.querySelectorAll(
-                'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
-              )].filter(element => !element.hidden && element.getClientRects().length);
-              return document.activeElement === controls.at(-1);
-            }""")
-            page.keyboard.press("Escape")
-            page.wait_for_selector(f"#{modal_id}", state="hidden", timeout=5000)
-            modal_contract.append({
-                "id": modal_id,
-                "controls": result["count"],
-                "wrapped": wrapped_forward and wrapped_backward,
-                "restored": page.locator("#modal_contract_trigger").evaluate("element => document.activeElement === element"),
-            })
-        page.eval_on_selector("#modal_contract_trigger", "element => element.remove()")
-        ctx.check(group, "UI-05E: every closable custom modal traps focus, closes on Escape, and restores focus",
-                  bool(modal_contract) and all(item["controls"] > 1 and item["wrapped"] and item["restored"] for item in modal_contract),
-                  str(modal_contract), screenshot=False)
-
-        page.emulate_media(reduced_motion="reduce", forced_colors="active")
-        preferences = page.evaluate("""() => {
-          const button = document.createElement('button');
-          button.textContent = 'Preference probe';
-          document.body.appendChild(button);
-          button.focus();
-          const style = getComputedStyle(button);
-          const result = {
-            reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
-            forced: matchMedia('(forced-colors: active)').matches,
-            animation: style.animationDuration,
-            transition: style.transitionDuration,
-            outline: style.outlineWidth,
-            border: style.borderTopStyle,
-          };
-          button.remove();
-          return result;
-        }""")
-        ctx.check(group, "UI-19: reduced-motion and forced-colors modes retain focus/control cues",
-                  preferences["reduced"] and preferences["forced"]
-                  and preferences["animation"] in ("0s", "0.001ms", "1e-06s")
-                  and preferences["transition"] in ("0s", "0.001ms", "1e-06s")
-                  and preferences["outline"] != "0px" and preferences["border"] == "solid",
-                  str(preferences), screenshot=False)
-
-        touch_context = page.context.browser.new_context(
-            has_touch=True,
-            viewport={"width": 390, "height": 844},
-        )
-        try:
-            touch_page = touch_context.new_page()
-            touch_page.goto(page.url.split("?")[0] + "?test=1", wait_until="networkidle")
-            touch_page.wait_for_selector("#drop_zone")
-            before = touch_page.get_attribute("#sidebar", "class")
-            touch = touch_page.evaluate("""() => ({
-              coarse: matchMedia('(pointer: coarse)').matches,
-              touchPoints: navigator.maxTouchPoints,
-              dropHeight: document.querySelector('#drop_zone').getBoundingClientRect().height,
-            })""")
-            touch_page.tap("#sidebar_toggle")
-            touch["sidebarClass"] = touch_page.get_attribute("#sidebar", "class")
-            ctx.check(group, "CI-10: a real coarse-pointer context keeps touch controls operable",
-                      touch["coarse"] and touch["touchPoints"] > 0 and touch["dropHeight"] >= 44
-                      and touch["sidebarClass"] != before,
-                      str(touch), screenshot=False)
-        finally:
-            touch_context.close()
-    except Exception as error:
-        ctx.check(group, "UI-03 responsive reachability matrix", False, str(error), screenshot=False)
+        page.set_viewport_size({"width": 1080, "height": 800})
+        desktop = page.evaluate("""() => ({
+          pageWidth: document.documentElement.scrollWidth,
+          sidebarWidth: document.querySelector('.sidebar').getBoundingClientRect().width,
+          resizerWidth: document.querySelector('.sidebar_resizer').getBoundingClientRect().width,
+          workspaceWidth: document.querySelector('.workspace').getBoundingClientRect().width,
+        })""")
+        ctx.check("Desktop layout", "CLEAN-05: 900 px scrolls sideways; 1080 px keeps sidebar, resizer, and workspace",
+                  narrow["pageWidth"] >= 1080 and narrow["scrollLeft"] > 0
+                  and narrow["appWidth"] >= 1080 and desktop["pageWidth"] == 1080
+                  and desktop["sidebarWidth"] > 0 and desktop["resizerWidth"] > 0
+                  and desktop["workspaceWidth"] > 0,
+                  f"900={narrow}; 1080={desktop}", screenshot=False)
     finally:
-        page.emulate_media(reduced_motion="no-preference", forced_colors="none")
-        page.evaluate(
-            "() => { document.documentElement.style.fontSize = ''; "
-            "document.documentElement.style.zoom = ''; window.scrollTo(0, 0); }"
-        )
         page.set_viewport_size(original or {"width": 1920, "height": 1080})

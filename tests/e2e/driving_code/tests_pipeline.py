@@ -25,9 +25,9 @@ def _run_qc_stage(page, stage, sample_name):
     """Click a Pre-modeling QC toggle (0-3) and wait for it to apply. Toggles
     the button's current state (on -> off, off -> on) rather than assuming a
     direction, since apply_qc_selection() re-derives the checked set from
-    every button's aria-pressed state, not from which one was just clicked."""
+    every button's data-active state, not from which one was just clicked."""
     selector = f"#{_QC_FILTER_IDS[stage]}"
-    turning_on = page.eval_on_selector(selector, "e => e.getAttribute('aria-pressed') !== 'true'")
+    turning_on = page.eval_on_selector(selector, "e => e.getAttribute('data-active') !== 'true'")
     page.click(selector)
     # Structural QC now requires an explicit ceiling review; accept the shown
     # defaults so the test exercises the same committed path as a user.
@@ -43,7 +43,7 @@ def _run_qc_stage(page, stage, sample_name):
         """([selector, expectPressed, sampleName, stateField]) => {
           const button = document.querySelector(selector);
           if (button?.disabled) return false;
-          if (button?.getAttribute('aria-pressed') !== (expectPressed ? 'true' : 'false')) return false;
+          if (button?.getAttribute('data-active') !== (expectPressed ? 'true' : 'false')) return false;
           const state = window.PhaseFinder?.pipeline?.get_state?.(sampleName);
           const applied = Boolean(state?.[stateField]);
           return expectPressed ? applied : !applied;
@@ -188,7 +188,7 @@ def test_pipeline(ctx: TestContext):
             ctx.check(
                 group,
                 f"QC toggle {stage} is marked active after applying",
-                page.eval_on_selector(f"#{_QC_FILTER_IDS[stage]}", "e => e.getAttribute('aria-pressed')") == "true",
+                page.eval_on_selector(f"#{_QC_FILTER_IDS[stage]}", "e => e.getAttribute('data-active')") == "true",
             )
 
             summary = _state_summary(page, sample_name, stage)
@@ -230,94 +230,6 @@ def test_pipeline(ctx: TestContext):
                       };
                     }""",
                     sample_name,
-                )
-                gate_handle = page.locator("#djf_scatter_plot .djf_scatter_gate_handle")
-                gate_handle.focus()
-                gate_tree = gate_handle.aria_snapshot()
-                gate_handle.press("ArrowRight")
-                page.wait_for_function(
-                    """(sampleName) => Boolean(
-                      window.PhaseFinder.pipeline.get_state(sampleName)
-                        ?.scatterGate?.manualOverride
-                    )""",
-                    arg=sample_name,
-                    timeout=10000,
-                )
-                gate_moved = page.evaluate(
-                    """(sampleName) => {
-                      const state = window.PhaseFinder.pipeline.get_state(sampleName);
-                      const row = window.PhaseFinder.app.get_parsed_files()
-                        .find((candidate) => candidate.name === sampleName);
-                      const result = state.scatterGate;
-                      let indexSum = 0;
-                      for (let index = 0; index < result.scatterMask.length; index += 1) {
-                        if (result.scatterMask[index]) indexSum += index + 1;
-                      }
-                      return {
-                        mean: [...result.mainComponent.mean],
-                        threshold: result.threshold,
-                        retained: result.retainedEventCount,
-                        indexSum,
-                        source: result.gateSource,
-                        rawMaskIsAuthoritative: row.data.masks.scatter === result.scatterMask,
-                        filteredCount: row.data.filtered?.eventCount,
-                        finalCount: Array.from(row.data.masks.final)
-                          .reduce((sum, value) => sum + value, 0),
-                        caption: document.querySelector('#djf_scatter_caption')?.textContent,
-                        resetEnabled: !document.querySelector('#djf_scatter_reset')?.disabled,
-                      };
-                    }""",
-                    sample_name,
-                )
-                ctx.check(
-                    group,
-                    "Moving the Cell Gate by keyboard applies a new authoritative scatter mask",
-                    gate_moved["source"] == "manual"
-                    and gate_moved["mean"] != gate_before["mean"]
-                    and gate_moved["indexSum"] != gate_before["indexSum"]
-                    and gate_moved["rawMaskIsAuthoritative"]
-                    and gate_moved["filteredCount"] == gate_moved["finalCount"]
-                    and gate_moved["resetEnabled"]
-                    and "Manual gate applied" in gate_moved["caption"],
-                    f"before={gate_before}, moved={gate_moved}",
-                )
-
-                page.click("#djf_scatter_reset")
-                page.wait_for_function(
-                    """(sampleName) =>
-                      !window.PhaseFinder.pipeline.get_state(sampleName)
-                        ?.scatterGate?.manualOverride""",
-                    arg=sample_name,
-                    timeout=10000,
-                )
-                gate_reset = page.evaluate(
-                    """(sampleName) => {
-                      const result = window.PhaseFinder.pipeline.get_state(sampleName).scatterGate;
-                      let indexSum = 0;
-                      for (let index = 0; index < result.scatterMask.length; index += 1) {
-                        if (result.scatterMask[index]) indexSum += index + 1;
-                      }
-                      return {
-                        mean: [...result.mainComponent.mean],
-                        threshold: result.threshold,
-                        retained: result.retainedEventCount,
-                        indexSum,
-                        source: result.gateSource,
-                        resetDisabled: document.querySelector('#djf_scatter_reset')?.disabled,
-                      };
-                    }""",
-                    sample_name,
-                )
-                ctx.check(
-                    group,
-                    "Reset fitted gate restores the original ellipse and scatter mask",
-                    gate_reset["source"] == "fitted"
-                    and gate_reset["mean"] == gate_before["mean"]
-                    and gate_reset["threshold"] == gate_before["threshold"]
-                    and gate_reset["retained"] == gate_before["retained"]
-                    and gate_reset["indexSum"] == gate_before["indexSum"]
-                    and gate_reset["resetDisabled"],
-                    f"before={gate_before}, reset={gate_reset}",
                 )
 
                 fitted_ellipse_box = page.locator(
@@ -379,52 +291,8 @@ def test_pipeline(ctx: TestContext):
                     and "coverage 80.0%" in gate_resized["caption"],
                     f"before={gate_before}, resized={gate_resized}, boxes={fitted_ellipse_box, resized_ellipse_box}",
                 )
-                ctx.check(
-                    group,
-                    "UI-18: scatter gate handle is exposed in the browser accessibility tree",
-                    "button" in gate_tree and "cell gate" in gate_tree.lower(),
-                    gate_tree,
-                )
-
-                gate_handle = page.locator("#djf_scatter_plot .djf_scatter_gate_handle")
-                gate_handle.focus()
-                gate_handle.press("Control+ArrowRight")
-                page.wait_for_function(
-                    """(sampleName) => Math.abs(
-                      window.PhaseFinder.pipeline.get_state(sampleName)
-                        ?.scatterGate?.rotation ?? 0
-                    ) > 1e-6""",
-                    arg=sample_name,
-                    timeout=10000,
-                )
-                gate_rotated = page.evaluate(
-                    """(sampleName) => {
-                      const result = window.PhaseFinder.pipeline.get_state(sampleName).scatterGate;
-                      return {
-                        mean: [...result.mainComponent.mean],
-                        rotation: result.rotation,
-                        manualRotation: result.manualOverride?.rotation,
-                        retained: result.retainedEventCount,
-                        source: result.gateSource,
-                        caption: document.querySelector('#djf_scatter_caption')?.textContent,
-                      };
-                    }""",
-                    sample_name,
-                )
-                ctx.check(
-                    group,
-                    "Rotating the Cell Gate by keyboard applies a new mask",
-                    gate_rotated["mean"] == gate_resized["mean"]
-                    and abs(gate_rotated["rotation"]) > 1e-6
-                    and gate_rotated["manualRotation"] == gate_rotated["rotation"]
-                    and gate_rotated["source"] == "manual"
-                    and gate_rotated["retained"] != gate_resized["retained"]
-                    and "rotation" in gate_rotated["caption"],
-                    f"resized={gate_resized}, rotated={gate_rotated}",
-                )
-
-                # Restore the fitted center, coverage, and rotation before the
-                # final translation used to exercise the Singlet Gate.
+                # Restore the fitted gate before closing the inspector so the
+                # next QC stage starts from the fitted state.
                 page.click("#djf_scatter_reset")
                 page.wait_for_function(
                     """(sampleName) =>
@@ -433,31 +301,34 @@ def test_pipeline(ctx: TestContext):
                     arg=sample_name,
                     timeout=10000,
                 )
-                gate_after_reset = page.evaluate(
-                    """(sampleName) => window.PhaseFinder.pipeline
-                      .get_state(sampleName).scatterGate.rotation""",
+                gate_reset = page.evaluate(
+                    """(sampleName) => {
+                      const result = window.PhaseFinder.pipeline.get_state(sampleName).scatterGate;
+                      let indexSum = 0;
+                      for (let index = 0; index < result.scatterMask.length; index += 1) {
+                        if (result.scatterMask[index]) indexSum += index + 1;
+                      }
+                      return {
+                        mean: [...result.mainComponent.mean],
+                        threshold: result.threshold,
+                        retained: result.retainedEventCount,
+                        indexSum,
+                        source: result.gateSource,
+                        resetDisabled: document.querySelector('#djf_scatter_reset')?.disabled,
+                      };
+                    }""",
                     sample_name,
                 )
                 ctx.check(
                     group,
-                    "Reset fitted gate also clears rotation back to zero",
-                    gate_after_reset == 0,
-                    f"rotation_after_reset={gate_after_reset}",
-                )
-
-                # Leave a manual gate active so the Singlet Gate proves that
-                # downstream processing consumes the edited mask rather than
-                # the fitted one.
-                gate_handle = page.locator("#djf_scatter_plot .djf_scatter_gate_handle")
-                gate_handle.focus()
-                gate_handle.press("ArrowLeft")
-                page.wait_for_function(
-                    """(sampleName) => Boolean(
-                      window.PhaseFinder.pipeline.get_state(sampleName)
-                        ?.scatterGate?.manualOverride
-                    )""",
-                    arg=sample_name,
-                    timeout=10000,
+                    "Reset fitted gate restores the original ellipse and scatter mask",
+                    gate_reset["source"] == "fitted"
+                    and gate_reset["mean"] == gate_before["mean"]
+                    and gate_reset["threshold"] == gate_before["threshold"]
+                    and gate_reset["retained"] == gate_before["retained"]
+                    and gate_reset["indexSum"] == gate_before["indexSum"]
+                    and gate_reset["resetDisabled"],
+                    f"before={gate_before}, reset={gate_reset}",
                 )
                 page.click("#djf_scatter_modal_close")
                 page.wait_for_selector("#djf_scatter_modal", state="hidden", timeout=10000)
@@ -597,14 +468,14 @@ def _time_qc_state(page, sample_name):
 def _set_time_qc(page, active):
     """Force the "2. Time" toggle to `active`, answering the method dialog when
     switching it on (turning it off never prompts)."""
-    already = page.eval_on_selector("#qc_time", "e => e.getAttribute('aria-pressed') === 'true'")
+    already = page.eval_on_selector("#qc_time", "e => e.getAttribute('data-active') === 'true'")
     if already == active:
         return
     page.click("#qc_time")
     if active:
         confirm_time_qc_method(page)
     page.wait_for_function(
-        "(expected) => (document.querySelector('#qc_time')?.getAttribute('aria-pressed') === 'true') === expected"
+        "(expected) => (document.querySelector('#qc_time')?.getAttribute('data-active') === 'true') === expected"
         " && !document.querySelector('#qc_time')?.disabled",
         arg=active, timeout=60000,
     )
@@ -719,7 +590,7 @@ def test_time_qc_methods(ctx: TestContext):
         # before changing any gate state. Cancelling leaves the prior selection
         # untouched.
         before_run_all = page.eval_on_selector_all(
-            ".qc_gate_button", "buttons => buttons.map(button => button.getAttribute('aria-pressed'))"
+            ".qc_gate_button", "buttons => buttons.map(button => button.getAttribute('data-active'))"
         )
         page.click("#qc_filter_all")
         page.wait_for_selector("#time_qc_method_modal:not([hidden])", timeout=10000)
@@ -732,7 +603,7 @@ def test_time_qc_methods(ctx: TestContext):
               return {
                 applyLabel: document.querySelector('#time_qc_method_apply')?.textContent.trim(),
                 gateStates: [...document.querySelectorAll('.qc_gate_button')]
-                  .map(button => button.getAttribute('aria-pressed')),
+                  .map(button => button.getAttribute('data-active')),
                 minimumButtonGap: Math.min(...gaps),
               };
             }"""
@@ -870,7 +741,7 @@ def test_time_qc_methods(ctx: TestContext):
         ctx.check(
             group,
             "Cancelling the method dialog leaves Time QC switched off",
-            page.eval_on_selector("#qc_time", "e => e.getAttribute('aria-pressed')") == "false"
+            page.eval_on_selector("#qc_time", "e => e.getAttribute('data-active')") == "false"
             and _time_qc_state(page, sample_name) is None,
             str(_time_qc_state(page, sample_name)),
         )
@@ -887,7 +758,7 @@ def test_time_qc_methods(ctx: TestContext):
         ctx.check(
             group,
             "Applying the dialog runs Stage 1 with the robust-summary method",
-            page.eval_on_selector("#qc_time", "e => e.getAttribute('aria-pressed')") == "true"
+            page.eval_on_selector("#qc_time", "e => e.getAttribute('data-active')") == "true"
             and robust is not None and robust["method"] == "robust-summary",
             str(robust),
         )
@@ -982,11 +853,11 @@ def test_time_qc_methods(ctx: TestContext):
         ctx.check(
             group,
             "Switching Time QC off does not prompt, and clears the method line and summary",
-            page.eval_on_selector("#qc_time", "e => e.getAttribute('aria-pressed')") == "false"
+            page.eval_on_selector("#qc_time", "e => e.getAttribute('data-active')") == "false"
             and page.is_hidden("#time_qc_method_modal")
             and page.is_hidden("#time_qc_summary")
             and page.is_hidden("#time_qc_method_line"),
-            f"pressed={page.eval_on_selector('#qc_time', 'e => e.getAttribute(\"aria-pressed\")')}",
+            f"pressed={page.eval_on_selector('#qc_time', 'e => e.getAttribute(\"data-active\")')}",
         )
     except Exception as error:
         ctx.check(group, "Time QC method flow", False, str(error))

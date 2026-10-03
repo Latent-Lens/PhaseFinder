@@ -64,7 +64,7 @@ from tests_filtering import test_table_filtering_sorting
 from tests_plotting import test_plotting, test_plot_toolbar
 from tests_pipeline import test_pipeline, test_time_qc_methods
 from tests_modeling import test_modeling
-from tests_sidebar import test_responsive_reachability, test_sidebar_icons, test_sidebar_modeling_mode
+from tests_sidebar import test_desktop_minimum_width, test_sidebar_icons, test_sidebar_modeling_mode
 from tests_stats import test_summary_statistics
 from tests_metadata_wizard import test_metadata_wizard
 from tests_metadata_table import test_metadata_table_actions
@@ -214,7 +214,7 @@ def run(args):
             ("modeling", lambda: test_modeling(e2e_ctx)),
             ("sidebar_icons", lambda: test_sidebar_icons(e2e_ctx)),
             ("sidebar_modeling_mode", lambda: test_sidebar_modeling_mode(e2e_ctx)),
-            ("responsive_reachability", lambda: test_responsive_reachability(e2e_ctx)),
+            ("desktop_minimum_width", lambda: test_desktop_minimum_width(e2e_ctx)),
             ("summary_statistics", lambda: test_summary_statistics(e2e_ctx)),
             ("metadata_wizard", lambda: test_metadata_wizard(e2e_ctx)),
             ("metadata_table_actions", lambda: test_metadata_table_actions(e2e_ctx)),

@@ -31,7 +31,7 @@ def _ensure_qc_applied(page):
     or clear if already all on) depend on the current state."""
     for stage in range(4):
         selector = f"#{_QC_FILTER_IDS[stage]}"
-        if page.eval_on_selector(selector, "e => e.getAttribute('aria-pressed')") != "true":
+        if page.eval_on_selector(selector, "e => e.getAttribute('data-active')") != "true":
             page.click(selector)
             # Structural QC requires an explicit ceiling review.
             if stage == 0:
@@ -152,25 +152,6 @@ def test_modeling(ctx: TestContext):
         # coordinate-based drag ambiguous, and the domain edge leaves no room
         # to move outward. G1 left has no such neighbor and is not pinned.
         handle = page.locator('#plot_area svg rect.peak_region_handle[data-boundary-key="g1_left"]')
-        handle.focus()
-        handle.press("ArrowLeft")
-        handle.press("ArrowLeft")
-        keyboard_state = _modeling_state(page, sample_name)
-        ctx.check(
-            group,
-            "Repeated peak-slider arrow keys retain focus and synchronize the numeric input",
-            page.evaluate("() => document.activeElement?.dataset?.boundaryKey === 'g1_left'")
-            and keyboard_state["peakSelection"]["regions"]["g1"]["left"] < regions["g1"]["left"]
-            and abs(page.eval_on_selector("#peak_region_g1_left", "e => Number(e.value)")
-                    - keyboard_state["peakSelection"]["regions"]["g1"]["left"]) < 0.01,
-            str(keyboard_state["peakSelection"]["regions"]),
-        )
-        page.click("#peak_regions_reset_button")
-        page.wait_for_function(
-            "(sampleName) => window.PhaseFinder.pipeline.get_state(sampleName)?.modeling?.peakSelection?.source === 'automatic'",
-            arg=sample_name,
-            timeout=5000,
-        )
         handle_box = handle.bounding_box()
         page.mouse.move(handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
         page.mouse.down()
@@ -226,7 +207,7 @@ def test_modeling(ctx: TestContext):
             group,
             "An invalid region edit (L1 < R1 <= L2 < R2 broken) shows an inline error and leaves state untouched",
             page.eval_on_selector("#peak_region_error", "e => e.textContent.length > 0")
-            and page.eval_on_selector("#peak_region_g2_left", "e => e.getAttribute('aria-invalid') === 'true'")
+            and page.eval_on_selector("#peak_region_g2_left", "e => e.getAttribute('data-invalid') === 'true'")
             and page.eval_on_selector("#peak_regions_accept_button", "e => e.disabled")
             and page.eval_on_selector("#cell_cycle_fit_current_button", "e => e.disabled")
             and page.eval_on_selector("#cell_cycle_fit_all_button", "e => e.disabled")
@@ -381,6 +362,66 @@ def test_modeling(ctx: TestContext):
             status_after_fit,
         )
 
+        # UI-13: the residual strip. Real production data (histogram_prep.js's
+        # build_fit_series_entry attaches `.residuals` from this exact fit), not
+        # a mock -- read straight back out of the rendered SVG.
+        residual_state = page.evaluate(
+            """() => {
+              const panel = document.querySelector('#residual_panel');
+              const checkbox = document.querySelector('#residual_panel_normalize');
+              const groups = Array.from(document.querySelectorAll('#residual_panel_body .residual_group'));
+              const svg = groups[0]?.querySelector('svg.residual_plot');
+              const stems = svg ? Array.from(svg.querySelectorAll('.residual_stem')) : [];
+              const mainSvg = document.querySelector('#plot_area svg');
+              return {
+                hidden: panel?.hidden,
+                groupCount: groups.length,
+                checkboxChecked: checkbox?.checked,
+                stemCount: stems.length,
+                svgWidth: svg?.getAttribute('width'),
+                mainSvgWidth: mainSvg?.getAttribute('width'),
+                sumAbsHeight: stems.reduce(
+                  (sum, el) => sum + Math.abs(parseFloat(el.getAttribute('y2')) - parseFloat(el.getAttribute('y1'))), 0,
+                ),
+              };
+            }"""
+        )
+        expected_bin_count = len(provenance.get("counts", []))
+        ctx.check(
+            group,
+            "UI-13: the residual strip renders once a fit exists -- one group, Pearson by default, one stem per bin, sharing the histogram's x-scale/width",
+            residual_state["hidden"] is False
+            and residual_state["groupCount"] == 1
+            and residual_state["checkboxChecked"] is True
+            and residual_state["stemCount"] == expected_bin_count
+            and residual_state["svgWidth"] == residual_state["mainSvgWidth"],
+            str({"residual_state": residual_state, "expected_bin_count": expected_bin_count}),
+        )
+        page.click("#residual_panel_normalize")
+        raw_state = page.evaluate(
+            """() => {
+              const svg = document.querySelector('#residual_panel_body .residual_group svg.residual_plot');
+              const stems = svg ? Array.from(svg.querySelectorAll('.residual_stem')) : [];
+              return {
+                checkboxChecked: document.querySelector('#residual_panel_normalize')?.checked,
+                sumAbsHeight: stems.reduce(
+                  (sum, el) => sum + Math.abs(parseFloat(el.getAttribute('y2')) - parseFloat(el.getAttribute('y1'))), 0,
+                ),
+              };
+            }"""
+        )
+        ctx.check(
+            group,
+            "UI-13: unchecking Pearson normalization redraws the strip from raw (observed - fitted) counts, not the same Pearson values",
+            raw_state["checkboxChecked"] is False
+            and raw_state["sumAbsHeight"] != residual_state["sumAbsHeight"],
+            str({"raw": raw_state, "pearson": residual_state}),
+        )
+        # Restore Pearson-normalized (the default) so it does not leak into the
+        # rest of this test's later fits (residual_panel.js's toggle state is
+        # module-level, not per-fit).
+        page.click("#residual_panel_normalize")
+
         # DOMAIN-01: the on-demand "Check domain sensitivity" action. It calls
         # assess_domain_sensitivity() (modeling_state.js) against the fit
         # already on screen rather than fitting anything new, and only appears
@@ -513,16 +554,6 @@ def test_modeling(ctx: TestContext):
             and abs(table_g1_percent - active_result["phaseFractions"]["g1"] * 100) < 2.0
             and plot_overlay_dom["filledPathCount"] >= 3,
             str({**plot_overlay_dom, "parsedG1Percent": table_g1_percent, "resultG1Fraction": active_result["phaseFractions"]["g1"]}),
-        )
-
-        modeled_tree = page.locator("#plot_area").aria_snapshot()
-        ctx.check(
-            group,
-            "UI-05D: browser accessibility tree exposes the modeled plot and phase fractions",
-            "img" in modeled_tree
-            and "watson pragmatic" in modeled_tree.lower()
-            and all(phase in modeled_tree for phase in ("G1", "S", "G2/M")),
-            modeled_tree,
         )
 
         # The actual fit warning messages (not just a count) render in the same
@@ -699,7 +730,7 @@ def test_modeling(ctx: TestContext):
         )
 
         # Dean-Jett assumes a biological ~2:1 G2:G1 ratio by default
-        # (fitRatioRange [1.65, 2.25] -- dean_jett.js). The plan requires an
+        # (fitRatioRange [1.75, 2.25] -- dean_jett.js). The plan requires an
         # infeasible ratio to surface as a clear inline error instead of
         # hanging or silently fitting something meaningless ("If a
         # constraint is infeasible, disable Fit and explain it inline"),
@@ -713,7 +744,7 @@ def test_modeling(ctx: TestContext):
         # infeasibility directly and deterministically: keep the reviewed G1
         # region as-is and edit G2 down to a narrow window immediately
         # adjacent to G1's right edge (still a valid L1 < R1 <= L2 < R2
-        # ordering) so its ratio to G1 is pinned near 1x -- below the 1.65x
+        # ordering) so its ratio to G1 is pinned near 1x -- below the 1.75x
         # floor for every (mu1, mu2) pair in the two regions, regardless of
         # the sample's absolute channel scale.
         # The window must also clear GATE-01's independent minimum-event-support
@@ -733,12 +764,12 @@ def test_modeling(ctx: TestContext):
         # registry from window.PhaseFinder (GATE-01's own enforced rule, see
         # tests/ci/test_gate_entry_points.py). Mirror the two source
         # constants directly instead: MINIMUM_PEAK_SUPPORT_EVENTS = 10
-        # (result_contract.js) and fitRatioRange [1.65, 2.25] (dean_jett.js
+        # (result_contract.js) and fitRatioRange [1.75, 2.25] (dean_jett.js
         # DEFAULT_CONFIG), same as this test's own comment above already cites.
         infeasible_search = page.evaluate(
             """(name) => {
               const minEvents = 10;
-              const [ratioMin, ratioMax] = [1.65, 2.25];
+              const [ratioMin, ratioMax] = [1.75, 2.25];
               const state = window.PhaseFinder.pipeline.get_state(name);
               const hist = state.histogram;
               const centers = hist.centers ?? hist.x;

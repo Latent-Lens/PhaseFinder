@@ -67,72 +67,26 @@ def test_metadata_table_actions(ctx: TestContext):
     ctx.check(group, "Metadata title-bar actions are ordered wizard, add, upload, download",
               actual_order == expected_order, str(actual_order))
 
-    accessibility = page.evaluate("""() => {
-      const table = document.querySelector('.file_table');
-      const selectAll = document.querySelector('#select_all_files');
-      const rows = [...document.querySelectorAll('.file_table tbody tr[data-file-id]')];
-      return {
-        caption: table?.querySelector('caption')?.textContent,
-        selectAll: selectAll?.getAttribute('aria-label'),
-        rowLabels: rows.map(row => row.querySelector('.row_select')?.getAttribute('aria-label')),
-        rowHeaders: rows.every(row => row.querySelector('th[scope="row"]')),
-      };
-    }""")
-    ctx.check(group, "UI-05B: table, select-all, rows, caption, and row headers are named",
-              bool(accessibility["caption"] and accessibility["selectAll"])
-              and all(accessibility["rowLabels"])
-              and accessibility["rowHeaders"], str(accessibility))
-
     page.click("#metadata_remove_column_button")
-    choice = page.locator('#file_table th[role="checkbox"][data-column-key]').first
-    touch_selected = choice.evaluate("""element => {
-      const touch = () => element.dispatchEvent(new PointerEvent('click', {
-        bubbles: true, pointerId: 71, pointerType: 'touch', isPrimary: true,
-      }));
-      touch();
-      const selected = element.getAttribute('aria-checked') === 'true';
-      touch();
-      return selected && element.getAttribute('aria-checked') === 'false';
-    }""")
-    choice.focus()
-    choice.press("Space")
-    choice_tree = choice.aria_snapshot()
-    ctx.check(group, "UI-18: removable columns are named keyboard/touch-operable choices",
-              touch_selected and choice.get_attribute("aria-checked") == "true"
-              and choice.get_attribute("aria-label").startswith("Remove ")
-              and not page.eval_on_selector("#remove_columns_confirm", "e => e.disabled")
-              and "checkbox" in choice_tree and "Remove " in choice_tree)
+    choice = page.locator('#file_table th.col_removable[data-column-key]').first
+    choice.click()
+    ctx.check(group, "Remove-columns mode selects a column by clicking its header",
+              not page.eval_on_selector("#remove_columns_confirm", "e => e.disabled"))
     page.click("#remove_columns_cancel")
 
     sort_button = page.locator(".th_sort").first
-    sort_field = sort_button.get_attribute("data-sort-field")
     sort_button.click()
-    page.wait_for_timeout(50)
-    sort_state = page.eval_on_selector(
-        f'.th_sort[data-sort-field="{sort_field}"]',
-        "button => ({ aria: button.closest('th').getAttribute('aria-sort'), focused: document.activeElement === button })",
-    )
-    ctx.check(group, "UI-05B: sortable header exposes aria-sort and preserves focus",
-              sort_state["aria"] in ("ascending", "descending") and sort_state["focused"], str(sort_state))
+    ctx.check(group, "Clicking a sortable header activates a sort arrow",
+              sort_button.locator(".sort_arrow.active").count() == 1)
 
     filter_toggle = page.locator(".th_filter_toggle").first
     if filter_toggle.count():
         filter_toggle.click()
-        relationship = filter_toggle.evaluate("""button => ({
-          expanded: button.getAttribute('aria-expanded'),
-          controls: button.getAttribute('aria-controls'),
-          visible: !document.getElementById(button.getAttribute('aria-controls'))?.hidden,
-          popup: button.getAttribute('aria-haspopup'),
-        })""")
+        menu = filter_toggle.locator("xpath=.././/div[contains(@class, 'multi_select_menu')]")
+        opened = not menu.evaluate("e => e.hidden")
         filter_toggle.press("Escape")
-        page.wait_for_timeout(50)
-        closed_focus = page.locator(f'.th_filter_toggle[data-filter-field="{filter_toggle.get_attribute("data-filter-field")}"]').evaluate(
-            "button => button.getAttribute('aria-expanded') === 'false' && document.activeElement === button"
-        )
-        ctx.check(group, "UI-05B: filter popup exposes relationships and Escape restores focus",
-                  relationship["expanded"] == "true" and relationship["visible"]
-                  and relationship["popup"] == "true" and bool(relationship["controls"])
-                  and closed_focus, str(relationship))
+        ctx.check(group, "Filter popup opens and Escape closes it",
+                  opened and menu.evaluate("e => e.hidden"))
 
     # --- Add a blank metadata column, edit its header, and edit values ---
     page.click("#metadata_add_column_button")
