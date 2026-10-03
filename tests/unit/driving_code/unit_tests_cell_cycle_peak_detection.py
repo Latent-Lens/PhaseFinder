@@ -140,17 +140,57 @@ _TESTS = r"""() => {
     };
   });
 
-  run('a single visible peak reports inferred_g2 with the expected reasons', () => {
+  run('a single visible peak on a flat background reports single_peak_unassigned (D2/AMBIG-01)', () => {
     const edges = edgesFor(256);
     const counts = gaussianBump(edges, 5000, 70, 4.2);
+    const result = peakDetection.detectCellCyclePeakPair(edges, counts);
+    return {
+      pass: result.detection.status === 'single_peak_unassigned'
+        && result.detection.selectedPair === null
+        && result.detection.lonePeakIndex === 69
+        && result.detection.g1Index === null
+        && result.detection.g2Index === null
+        && result.autoPeakRegions === null
+        && result.detection.reasons.includes('SINGLE_PEAK_UNASSIGNED')
+        && result.detection.reasons.includes('LONE_PEAK_REQUIRES_USER_INPUT'),
+      detail: JSON.stringify(result.detection),
+    };
+  });
+
+  run('a single primary peak with a secondary candidate that cannot pair falls back to inferred_g2', () => {
+    const edges = edgesFor(256);
+    const counts = addAll(
+      gaussianBump(edges, 5000, 70, 4.2),
+      gaussianBump(edges, 1500, 95, 3.5),
+    );
     const result = peakDetection.detectCellCyclePeakPair(edges, counts);
     return {
       pass: result.detection.status === 'inferred_g2'
         && result.detection.selectedPair === null
         && result.detection.reasons.includes('G2_INITIALIZED_FROM_EXPECTED_RATIO')
-        && Math.abs(result.detection.g2Index !== result.detection.g1Index) // has a distinct proposed g2
+        && result.autoPeakRegions !== null
         && result.autoPeakRegions.g2.source === 'inferred',
       detail: JSON.stringify(result.detection),
+    };
+  });
+
+  run('proposeLonePeakRegions projects 2x for G1 assignment and 0.5x for G2 assignment', () => {
+    const edges = edgesFor(256);
+    const counts = gaussianBump(edges, 5000, 70, 4.2);
+    const result = peakDetection.detectCellCyclePeakPair(edges, counts);
+    const g1Assigned = peakDetection.proposeLonePeakRegions(edges, result.detection.lonePeakIndex, result.detection.loneCandidate, 'g1');
+    const g2Assigned = peakDetection.proposeLonePeakRegions(edges, result.detection.lonePeakIndex, result.detection.loneCandidate, 'g2');
+    const g1AtPeak = Math.abs(0.5 * (g1Assigned.g1.left + g1Assigned.g1.right) - 70) < 5;
+    const g2AtDouble = Math.abs(0.5 * (g1Assigned.g2.left + g1Assigned.g2.right) - 140) < 10;
+    const g2AtPeak = Math.abs(0.5 * (g2Assigned.g2.left + g2Assigned.g2.right) - 70) < 5;
+    const g1AtHalf = Math.abs(0.5 * (g2Assigned.g1.left + g2Assigned.g1.right) - 35) < 5;
+    return {
+      pass: g1Assigned.g1.source === 'detected'
+        && g1Assigned.g2.source === 'inferred'
+        && g2Assigned.g2.source === 'detected'
+        && g2Assigned.g1.source === 'inferred'
+        && g1AtPeak && g2AtDouble && g2AtPeak && g1AtHalf,
+      detail: JSON.stringify({ g1Assigned, g2Assigned }),
     };
   });
 
@@ -168,6 +208,27 @@ _TESTS = r"""() => {
     return {
       pass: result.pairs.length >= 2,
       detail: JSON.stringify(result.pairs.map((p) => ({ g1: p.g1.x, g2: p.g2.x, score: p.score }))),
+    };
+  });
+
+  run('PEAK-02: a G2-heavy histogram with 2% 4N doublets proposes G1/G2 for review', () => {
+    const edges = Array.from({ length: 1025 }, (_, i) => i * 8);
+    const bump = (area, mean, sigma) => edges.slice(1).map((_, i) => {
+      const z = ((i + 0.5) * 8 - mean) / sigma;
+      return 8 * area * Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+    });
+    const bridge = edges.slice(1).map((_, i) => (i + 0.5) * 8 >= 180 && (i + 0.5) * 8 <= 330
+      ? 8 * 13000 / 150 : 0);
+    const counts = addAll(bump(25000, 167, 18), bump(60000, 334, 22), bridge, bump(2000, 668, 35));
+    const result = peakDetection.detectCellCyclePeakPair(edges, counts);
+    return {
+      pass: result.pairs[0].g1.x > 300 // the raw score still favors G2/4N
+        && Math.abs(result.detection.g1Candidate.x - 167) < 8
+        && Math.abs(result.detection.g2Candidate.x - 334) < 8
+        && result.detection.status === 'low_confidence'
+        && result.detection.confidence === null
+        && result.detection.reasons.includes('POSSIBLE_G2_4N_DOUBLET_REVIEW_PEAKS'),
+      detail: JSON.stringify({ status: result.detection.status, selected: [result.detection.g1Candidate.x, result.detection.g2Candidate.x], pairs: result.pairs.map(p => [p.g1.x, p.g2.x, p.score]) }),
     };
   });
 

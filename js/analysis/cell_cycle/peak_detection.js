@@ -439,7 +439,7 @@ export function scoreCellCyclePeakPairs({
   const binWidth = medianBinWidth(edges);
   const total = sum(counts);
   const expectedRatio = options.expectedRatio ?? 2;
-  const ratioRange = options.ratioRange ?? [1.60, 2.35];
+  const ratioRange = options.ratioRange ?? [1.65, 2.35];
   const ratioLogTolerance = options.ratioLogTolerance ?? 0.12;
   const widthLogTolerance = options.widthLogTolerance ?? 0.55;
   const weights = normalizedWeights(options.pairWeights);
@@ -723,37 +723,47 @@ export function detectCellCyclePeakPair(edges, counts, options = {}) {
   let detection;
 
   if (pairs.length) {
-    // A post-hoc "demote the period-doubled pair" correction was tried here and
-    // REMOVED. The idea was sound -- no cycling cell holds less DNA than G1, so a
-    // well-formed peak at HALF the chosen G1 proves the choice was doubled -- but
-    // it cannot be implemented from this histogram's local geometry:
-    //
-    //   * position alone promotes a sub-G1 debris spike sitting at exactly half
-    //     the chosen peak (the existing sub-G1 distractor fixture);
-    //   * width cannot rescue it, because detection smooths at [1, 2, 4] bins, so
-    //     a sigma=1 debris spike is measured at sqrt(1^2 + 4^2) ~ 4.1 bins --
-    //     indistinguishable from a real sigma=4.2 G1 peak.
-    //
-    // Both discriminators are destroyed by the smoothing the detector needs. So
-    // the ambiguity is not resolvable within one histogram, and the correction
-    // only overrode the existing multi-term scoring (which handles the fixture
-    // correctly) with a worse rule. Resolving it needs information from OUTSIDE
-    // the single histogram -- the shared DNA axis across an acquisition run, or
-    // the recorded arrest condition. See the audit checklist under PEAK-01.
-    const selected = pairs[0];
-    const status = selected.score >= minPairScore && selected.confidence >= minConfidence
+    const leading = pairs[0];
+    // A weak 4N doublet can outrank a real G1/G2 pair on width and bridge
+    // scores. Require a substantial lower peak and a competitive lower pair;
+    // position alone would mistake a sub-G1 debris spike for G1.
+    const lowerPair = pairs.find((pair) => pair.g2 === leading.g1
+      && pair.score >= leading.score - 0.08
+      && pair.g1.prominence >= 0.25 * leading.g1.prominence);
+    const possibleDoublet = lowerPair && leading.g2.prominence < 0.1 * leading.g1.prominence;
+    const selected = possibleDoublet ? lowerPair : leading;
+    const status = !possibleDoublet && selected.score >= minPairScore && leading.confidence >= minConfidence
       ? "detected"
       : "low_confidence";
     detection = {
       status,
-      confidence: selected.confidence,
+      // The ranked-pair score belongs to the leading pair, not this override.
+      confidence: possibleDoublet ? null : selected.confidence,
       g1Index: selected.g1.index,
       g2Index: selected.g2.index,
       g1Candidate: selected.g1,
       g2Candidate: selected.g2,
       selectedPair: selected,
-      alternatives: pairs.slice(1, options.maxAlternatives ?? 4),
-      reasons: status === "detected" ? [] : ["PAIR_EVIDENCE_WEAK_OR_AMBIGUOUS"],
+      alternatives: pairs.filter((pair) => pair !== selected).slice(0, options.maxAlternatives ?? 4),
+      reasons: possibleDoublet ? ["POSSIBLE_G2_4N_DOUBLET_REVIEW_PEAKS"]
+        : status === "detected" ? [] : ["PAIR_EVIDENCE_WEAK_OR_AMBIGUOUS"],
+    };
+  } else if (finalized.candidates.length <= 1) {
+    const loneCandidate = finalized.candidates[0] ?? null;
+    const peakIndex = loneCandidate?.index
+      ?? finalized.primarySmoothed.indexOf(Math.max(...finalized.primarySmoothed));
+    detection = {
+      status: "single_peak_unassigned",
+      confidence: 0,
+      lonePeakIndex: peakIndex,
+      loneCandidate,
+      g1Index: null,
+      g2Index: null,
+      g1Candidate: null,
+      g2Candidate: null,
+      selectedPair: null,
+      alternatives: [],
+      reasons: ["SINGLE_PEAK_UNASSIGNED", "LONE_PEAK_REQUIRES_USER_INPUT"],
     };
   } else {
     const fallbackG1 = chooseFallbackG1(finalized.candidates, centers, options);
@@ -773,10 +783,17 @@ export function detectCellCyclePeakPair(edges, counts, options = {}) {
     };
   }
 
-  detection.fallbackSigmaBins = detection.g1Candidate?.sigmaLeftBins
-    ?? detection.g1Candidate?.sigmaBins
-    ?? Math.max(1, (options.defaultCV ?? 0.06) * centers[detection.g1Index] / medianBinWidth(edges));
-  detection.autoPeakRegions = proposeAutomaticPeakRegions(edges, detection, options);
+  if (detection.status === "single_peak_unassigned") {
+    detection.fallbackSigmaBins = detection.loneCandidate?.sigmaLeftBins
+      ?? detection.loneCandidate?.sigmaBins
+      ?? Math.max(1, (options.defaultCV ?? 0.06) * (centers[detection.lonePeakIndex] ?? centers[0]) / medianBinWidth(edges));
+    detection.autoPeakRegions = null;
+  } else {
+    detection.fallbackSigmaBins = detection.g1Candidate?.sigmaLeftBins
+      ?? detection.g1Candidate?.sigmaBins
+      ?? Math.max(1, (options.defaultCV ?? 0.06) * centers[detection.g1Index] / medianBinWidth(edges));
+    detection.autoPeakRegions = proposeAutomaticPeakRegions(edges, detection, options);
+  }
 
   return {
     ...finalized,
@@ -787,7 +804,7 @@ export function detectCellCyclePeakPair(edges, counts, options = {}) {
       smoothingScales: scales,
       primaryScale: finalized.primaryScale,
       expectedRatio,
-      ratioRange: [...(options.ratioRange ?? [1.60, 2.35])],
+      ratioRange: [...(options.ratioRange ?? [1.65, 2.35])],
       pairWeights: normalizedWeights(options.pairWeights),
       minPairScore,
       minPairConfidence: minConfidence,
@@ -798,3 +815,63 @@ export function detectCellCyclePeakPair(edges, counts, options = {}) {
     },
   };
 }
+
+/*
+
+Purpose:
+	Proposes G1 and G2 regions when a single resolvable peak has its identity
+	explicitly assigned by the user (or caller) as either 'g1' or 'g2' (owner decision D2).
+	When assigned 'g1', G2 is projected at expectedRatio * x (e.g. 2x).
+	When assigned 'g2', G1 is projected at x / expectedRatio (e.g. 0.5x).
+
+Input:
+	edges [array]: histogram bin edges
+	lonePeakIndex [number]: the bin index of the lone resolvable peak
+	loneCandidate [object|null]: candidate metadata for the lone peak, if available
+	identity [string]: 'g1' or 'g2'
+	options [object]: region-width & detector options
+
+Output:
+	regions [object]: { g1, g2 } proposed regions with source 'detected' / 'inferred'
+
+*/
+export function proposeLonePeakRegions(edges, lonePeakIndex, loneCandidate, identity, options = {}) {
+  const centers = binCenters(edges);
+  const expectedRatio = options.expectedRatio ?? 2;
+  const binWidth = medianBinWidth(edges);
+  const loneX = centers[lonePeakIndex];
+  const loneSigmaBins = loneCandidate?.sigmaLeftBins
+    ?? loneCandidate?.sigmaBins
+    ?? Math.max(1, (options.defaultCV ?? 0.06) * loneX / binWidth);
+
+  let g1Index;
+  let g2Index;
+  let g1Candidate;
+  let g2Candidate;
+  let fallbackSigmaBins;
+
+  const norm = String(identity || "").toLowerCase().trim();
+  if (norm === "g2") {
+    g2Index = lonePeakIndex;
+    g1Index = indexNearest(centers, loneX / expectedRatio);
+    g2Candidate = loneCandidate;
+    g1Candidate = null;
+    fallbackSigmaBins = Math.max(1, loneSigmaBins / expectedRatio);
+  } else {
+    g1Index = lonePeakIndex;
+    g2Index = indexNearest(centers, expectedRatio * loneX);
+    g1Candidate = loneCandidate;
+    g2Candidate = null;
+    fallbackSigmaBins = Math.max(1, loneSigmaBins * expectedRatio);
+  }
+
+  const detection = {
+    g1Index,
+    g2Index,
+    g1Candidate,
+    g2Candidate,
+    fallbackSigmaBins,
+  };
+  return proposeAutomaticPeakRegions(edges, detection, options);
+}
+

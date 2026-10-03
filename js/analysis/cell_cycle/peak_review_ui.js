@@ -28,6 +28,10 @@ import {
   peak_region_error,
   peak_regions_reset_button,
   peak_regions_accept_button,
+  cell_cycle_fit_group,
+  single_peak_review_actions,
+  assign_lone_peak_g1_button,
+  assign_lone_peak_g2_button,
 } from "../../ui/dom.js";
 import { plottable_rows, plot_bin_count, clamp_range_to_analysis_domain } from "../../plotting/data.js";
 import { focused_file_id } from "../../data_structs/table_state.js";
@@ -39,6 +43,7 @@ import {
   update_peak_regions,
   accept_peak_regions,
   reset_peak_regions,
+  assign_lone_peak_identity,
 } from "./modeling_state.js";
 import { validatePeakRegions } from "./peak_regions.js";
 
@@ -49,6 +54,7 @@ const PEAK_STATUS_LABELS = {
   detected: "Detected",
   low_confidence: "Low confidence — review closely",
   inferred_g2: "G2/M inferred",
+  single_peak_unassigned: "Single peak — identity required",
 };
 
 /*
@@ -144,10 +150,7 @@ Output:
 	(none) [void]
 
 */
-function show_region_error(message, invalid_keys = []) {
-  Object.entries(region_inputs()).forEach(([key, input]) => {
-    if (input) input.setAttribute("aria-invalid", invalid_keys.includes(key) ? "true" : "false");
-  });
+function show_region_error(message) {
   if (!peak_region_error) return;
   peak_region_error.textContent = message || "";
   peak_region_error.hidden = !message;
@@ -155,20 +158,6 @@ function show_region_error(message, invalid_keys = []) {
 
 function clone_regions(regions) {
   return regions ? { g1: { ...regions.g1 }, g2: { ...regions.g2 } } : null;
-}
-
-function invalid_region_keys(regions) {
-  const values = {
-    g1_left: regions?.g1?.left,
-    g1_right: regions?.g1?.right,
-    g2_left: regions?.g2?.left,
-    g2_right: regions?.g2?.right,
-  };
-  const keys = Object.entries(values).filter(([, value]) => !Number.isFinite(value)).map(([key]) => key);
-  if (values.g1_left >= values.g1_right) keys.push("g1_left", "g1_right");
-  if (values.g2_left >= values.g2_right) keys.push("g2_left", "g2_right");
-  if (values.g1_right > values.g2_left) keys.push("g1_right", "g2_left");
-  return [...new Set(keys)];
 }
 
 export function peak_region_draft_valid(row = active_peak_review_row()) {
@@ -197,7 +186,7 @@ export function commit_peak_region_draft(row, regions, { preserveOverlay = false
     notify_regions_changed({ preserveOverlay });
   } catch (error) {
     region_draft.error = error.message;
-    show_region_error(error.message, invalid_region_keys(regions));
+    show_region_error(error.message);
   }
   if (peak_regions_accept_button) peak_regions_accept_button.disabled = !region_draft.valid;
   publish_draft_validity();
@@ -257,8 +246,14 @@ Output:
 	text [string]: the status line, or "" when there's no status
 
 */
-function status_text(peakDetection) {
+function status_text(peakDetection, peakSelection = null) {
   if (!peakDetection || peakDetection.status == null) return "";
+  if (peakDetection.status === "single_peak_unassigned") {
+    if (peakSelection?.userAssignedIdentity) {
+      return `Single peak assigned as ${peakSelection.userAssignedIdentity.toUpperCase()} by user — proposed regions initialized with counterpart projected from 2:1 ratio.`;
+    }
+    return "Single peak detected: only one peak was found; its identity cannot be told from the histogram alone. Please assign whether it is G1 or G2.";
+  }
   // PEAK-01: this is a weighted heuristic score (ratio/prominence/area/width/
   // persistence/separation/bridge/edge terms, see peak_detection.js), never
   // calibrated against independently annotated histograms. "N% confidence"
@@ -268,7 +263,10 @@ function status_text(peakDetection) {
     ? ` (heuristic score ${Math.round(peakDetection.confidence * 100)}/100, uncalibrated)`
     : "";
   const label = PEAK_STATUS_LABELS[peakDetection.status] || peakDetection.status;
-  const reasons = peakDetection.reasons?.length ? ` — ${peakDetection.reasons.join("; ")}` : "";
+  const reasons = peakDetection.reasons?.length ? ` — ${peakDetection.reasons.map((reason) =>
+    reason === "POSSIBLE_G2_4N_DOUBLET_REVIEW_PEAKS"
+      ? "A small 4N doublet peak may mimic G2; review the proposed G1/G2 regions before fitting."
+      : reason).join("; ")}` : "";
   // AMBIG-01: only one peak was resolvable, so the fallback assumed it is G1 and
   // placed G2/M from the expected ratio -- it could equally be a G2-arrested (or
   // otherwise single-population) sample. Name that possibility explicitly rather
@@ -327,6 +325,7 @@ function refresh_panel() {
         : "";
       peak_review_status.hidden = !bulk;
     }
+    if (single_peak_review_actions) single_peak_review_actions.hidden = true;
     set_region_inputs_disabled(true);
     show_region_error("");
     return;
@@ -344,13 +343,30 @@ function refresh_panel() {
   const modeling = state?.modeling;
 
   if (!modeling || !modeling.peakSelection.regions) {
+    const isSingleUnassigned = modeling?.peakDetection?.status === "single_peak_unassigned";
+    if (single_peak_review_actions) {
+      single_peak_review_actions.hidden = !isSingleUnassigned;
+    }
+    if (isSingleUnassigned) {
+      if (peak_review_status) {
+        peak_review_status.textContent = status_text(modeling.peakDetection, modeling.peakSelection);
+        peak_review_status.hidden = false;
+      }
+      set_region_inputs_disabled(true);
+      show_region_error("Assign whether this lone peak represents G1 or G2 to propose regions.");
+      return;
+    }
     if (peak_review_status) peak_review_status.hidden = true;
     set_region_inputs_disabled(true);
     return;
   }
 
+  if (single_peak_review_actions) {
+    single_peak_review_actions.hidden = true;
+  }
+
   if (peak_review_status) {
-    const text = status_text(modeling.peakDetection);
+    const text = status_text(modeling.peakDetection, modeling.peakSelection);
     peak_review_status.textContent = text;
     peak_review_status.hidden = !text;
   }
@@ -359,7 +375,7 @@ function refresh_panel() {
     region_draft = { rowName: row.name, regions: clone_regions(modeling.peakSelection.regions), valid: true, error: "" };
     fill_region_inputs(region_draft.regions);
   }
-  show_region_error(region_draft.error, region_draft.valid ? [] : invalid_region_keys(region_draft.regions));
+  show_region_error(region_draft.error);
   if (peak_regions_accept_button) peak_regions_accept_button.disabled = !region_draft.valid;
 
   // A histogram change (e.g. the Bins control, see bin_settings_sync.js) marks
@@ -505,6 +521,9 @@ function on_accept_click() {
   accept_peak_regions(row);
   set_status_bar(`Peak regions accepted for ${row.name}.`);
   refresh_panel();
+  if (cell_cycle_fit_group && typeof cell_cycle_fit_group.scrollIntoView === "function") {
+    cell_cycle_fit_group.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 }
 
 /*
@@ -524,6 +543,24 @@ export function init_peak_review_ui() {
   initialized = true;
 
   if (detect_peaks_button) detect_peaks_button.addEventListener("click", on_detect_peaks_click);
+  if (assign_lone_peak_g1_button) {
+    assign_lone_peak_g1_button.addEventListener("click", () => {
+      const row = active_peak_review_row();
+      if (!row) return;
+      assign_lone_peak_identity(row, "g1");
+      notify_regions_changed();
+      refresh_panel();
+    });
+  }
+  if (assign_lone_peak_g2_button) {
+    assign_lone_peak_g2_button.addEventListener("click", () => {
+      const row = active_peak_review_row();
+      if (!row) return;
+      assign_lone_peak_identity(row, "g2");
+      notify_regions_changed();
+      refresh_panel();
+    });
+  }
   if (peak_regions_reset_button) peak_regions_reset_button.addEventListener("click", on_reset_click);
   if (peak_regions_accept_button) peak_regions_accept_button.addEventListener("click", on_accept_click);
   Object.values(region_inputs()).forEach((el) => {

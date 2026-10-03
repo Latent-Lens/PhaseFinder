@@ -15,11 +15,12 @@ import {
   build_histogram_summary,
 } from "./data.js";
 import { get_state as get_pipeline_state, get_active_model_result, state_matches_row } from "../analysis/pipeline/pipeline_state.js";
+import { pearsonResiduals } from "../analysis/math/poisson.js";
 
 // Dash patterns cycled across plotted samples so overlapping curves stay
 // distinguishable without relying on color alone. Shared by the overlay and
 // ridge renderers so a given sample's line style doesn't change between views.
-export const SAMPLE_LINE_STYLES = [null, "7 3", "2 2", "9 2 2 2"];
+export const SAMPLE_LINE_STYLES = [null, "7 3", "2 2", "9 2 2 2", "1 2", "5 2 1 2", "12 3", "3 1"];
 
 const plot_compute_cache = new Map();
 const plot_performance_counts = { eventScans: 0, histogramBuilds: 0, cacheHits: 0 };
@@ -204,6 +205,52 @@ export function build_fit_series_entry(series_entry, state, fit) {
   const debris_counts = component_counts("debris");
   const aggregate_counts = component_counts("aggregate");
 
+  // UI-13: per-bin fit residuals, straight from the histogram this fit was
+  // computed against (state.histogram.y is the exact observedCounts array
+  // fit_cell_cycle_model() fit fit.expectedCounts to -- see modeling_state.js's
+  // `state.histogram !== inputHistogram` staleness guard) and fit.expectedCounts
+  // itself. Reuses the same pearsonResiduals() the fit's own diagnostics use
+  // (diagnostics.js), so the residual panel can never disagree with the
+  // deviance/goodness-of-fit numbers already reported elsewhere for this fit.
+  const observed_counts = state?.histogram?.y;
+  const expected_counts = fit?.expectedCounts;
+  let residuals = null;
+  if (
+    Array.isArray(observed_counts) &&
+    Array.isArray(expected_counts) &&
+    observed_counts.length === expected_counts.length &&
+    observed_counts.length > 0
+  ) {
+    try {
+      const pearson = pearsonResiduals(observed_counts, expected_counts);
+      const raw = x.map((_, index) => (Number(observed_counts[index]) || 0) - (Number(expected_counts[index]) || 0));
+      let max_abs_pearson = 0;
+      let max_abs_index = -1;
+      let outside_count = 0;
+      pearson.forEach((value, index) => {
+        const magnitude = Math.abs(value);
+        if (magnitude > 2) outside_count += 1;
+        if (magnitude > max_abs_pearson) {
+          max_abs_pearson = magnitude;
+          max_abs_index = index;
+        }
+      });
+      residuals = {
+        x: [...x],
+        observed: [...observed_counts],
+        expected: [...expected_counts],
+        raw,
+        pearson,
+        outsideCount: outside_count,
+        outsideFraction: pearson.length ? outside_count / pearson.length : 0,
+        maxAbsPearson: max_abs_pearson,
+        maxAbsIndex: max_abs_index,
+      };
+    } catch {
+      residuals = null;
+    }
+  }
+
   return {
     row: series_entry.row,
     name: series_entry.name,
@@ -226,16 +273,14 @@ export function build_fit_series_entry(series_entry, state, fit) {
     // AD-2/UI-01 follow-up: carried straight through from the source `fit`
     // (the contracted result -- see result_contract.js's apply_result_contract,
     // which stamps both), NOT defaulted -- absence of evidence is not
-    // validation. Without these two fields, analysis_text() (plot_accessibility.js)
-    // has no way to know a result is unvalidated or unconverged, so the SVG
-    // <desc> and the visible "Plot data and analysis summary" table were
-    // announcing bare percentages with zero trust signal for exactly the
-    // results the sidebar and metadata table flag with a qualifier/⚠
-    // (format_fraction_cell()).
+    // validation. Without these fields, plot summaries would announce bare
+    // percentages with zero trust signal for results the sidebar and metadata
+    // table flag with a qualifier/⚠ (format_fraction_cell()).
     validForReporting: fit.validForReporting,
     converged: fit.converged,
     scientificallyValid: fit.scientificallyValid,
     limitedReliability: fit.limitedReliability,
+    residuals,
   };
 }
 

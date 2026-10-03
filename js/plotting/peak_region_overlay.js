@@ -1,10 +1,8 @@
 // Draggable G1/G2 peak-region handles drawn on top of the density plot for
 // whichever sample the sidebar's Identify Peaks panel is currently reviewing
 // (see analysis/cell_cycle/peak_review_ui.js's active_peak_review_row()).
-// Mirrors the accessible drag pattern in analysis/scatter_modal.js (wide
-// transparent hit-target, keyboard arrow-key nudge, focus/drag styling) but
-// constrained to a single axis, and commits straight to modeling_state.js
-// rather than routing through a modal's own gate-edit callback.
+// Uses a wide transparent drag target constrained to a single axis and commits
+// straight to modeling_state.js rather than routing through a modal callback.
 //
 // This module never imports render.js. Sidebar edits request a full redraw;
 // overlay edits update these live nodes and notify the rest of the UI without
@@ -25,14 +23,12 @@ import {
 const G1_COLOR = "#2563eb";
 const G2_COLOR = "#b42318";
 const BAND_OPACITY = 0.07;
-const KEY_STEP = 0.01;
-const KEY_STEP_LARGE = 0.05;
 
 const BOUNDARIES = [
-  { key: "g1_left", region: "g1", side: "left", color: G1_COLOR, label: "G1 left" },
-  { key: "g1_right", region: "g1", side: "right", color: G1_COLOR, label: "G1 right" },
-  { key: "g2_left", region: "g2", side: "left", color: G2_COLOR, label: "G2/M left" },
-  { key: "g2_right", region: "g2", side: "right", color: G2_COLOR, label: "G2/M right" },
+  { key: "g1_left", region: "g1", side: "left", color: G1_COLOR },
+  { key: "g1_right", region: "g1", side: "right", color: G1_COLOR },
+  { key: "g2_left", region: "g2", side: "left", color: G2_COLOR },
+  { key: "g2_right", region: "g2", side: "right", color: G2_COLOR },
 ];
 
 /*
@@ -106,7 +102,7 @@ function get_value(live, key) {
 Purpose:
 	Draws the region handles for the currently reviewed row into `svg`, using the
 	same scales/margins/clip as the rest of the density plot, and wires their
-	drag/keyboard interaction and commit. A no-op when no row is being reviewed, it
+	drag interaction and commit. A no-op when no row is being reviewed, it
 	isn't part of the currently plotted series, or it has no regions yet.
 
 Input:
@@ -124,7 +120,39 @@ export function render_peak_region_overlay({ svg, series, x_scale, y_scale, marg
 
   const state = get_state(row.name);
   const regions = current_peak_region_draft(row) ?? state?.modeling?.peakSelection?.regions;
-  if (!regions) return;
+  if (!regions) {
+    if (state?.modeling?.peakDetection?.status === "single_peak_unassigned" && !state?.modeling?.peakSelection?.userAssignedIdentity) {
+      const alertGroup = svg.append("g")
+        .attr("class", "single_peak_alert single_peak_alert_svg")
+        .attr("role", "alert");
+      const boxW = Math.min(480, Math.max(260, (svg.node()?.getBoundingClientRect()?.width || 560) - margin.left - margin.right));
+      const boxX = margin.left + 16;
+      const boxY = margin.top + 16;
+      alertGroup.append("rect")
+        .attr("x", boxX)
+        .attr("y", boxY)
+        .attr("width", boxW)
+        .attr("height", 46)
+        .attr("rx", 6)
+        .attr("fill", "#fffbeb")
+        .attr("stroke", "#d97706")
+        .attr("stroke-width", 1.5);
+      alertGroup.append("text")
+        .attr("x", boxX + 12)
+        .attr("y", boxY + 18)
+        .attr("font-size", 12)
+        .attr("font-weight", "bold")
+        .attr("fill", "#92400e")
+        .text("Single peak detected — identity cannot be told from histogram");
+      alertGroup.append("text")
+        .attr("x", boxX + 12)
+        .attr("y", boxY + 34)
+        .attr("font-size", 11)
+        .attr("fill", "#b45309")
+        .text("Only one peak was found; assign whether it represents G1 or G2 to proceed.");
+    }
+    return;
+  }
 
   const top = margin.top;
   const bottom = height - margin.bottom;
@@ -133,8 +161,7 @@ export function render_peak_region_overlay({ svg, series, x_scale, y_scale, marg
 
   const group = svg.append("g")
     .attr("class", "peak_region_overlay")
-    .attr("clip-path", `url(#${clipId})`)
-    .attr("aria-label", `${row.name} G1/G2 peak regions`);
+    .attr("clip-path", `url(#${clipId})`);
 
   const band_group = group.append("g");
   const bands = {
@@ -202,11 +229,7 @@ export function render_peak_region_overlay({ svg, series, x_scale, y_scale, marg
         .attr("x", px - 7)
         .attr("y", top)
         .attr("width", 14)
-        .attr("height", Math.max(0, bottom - top))
-        .attr("aria-valuenow", get_value(live, key).toFixed(2))
-        .attr("aria-valuetext", `${get_value(live, key).toFixed(2)} channel units; allowed ${boundary_limits(key, live, domain)[0].toFixed(2)} to ${boundary_limits(key, live, domain)[1].toFixed(2)}`)
-        .attr("aria-valuemin", boundary_limits(key, live, domain)[0].toFixed(2))
-        .attr("aria-valuemax", boundary_limits(key, live, domain)[1].toFixed(2));
+        .attr("height", Math.max(0, bottom - top));
     });
   };
 
@@ -229,7 +252,7 @@ export function render_peak_region_overlay({ svg, series, x_scale, y_scale, marg
   };
   const hide_value_label = () => value_label.style("opacity", 0);
 
-  BOUNDARIES.forEach(({ key, color, label }) => {
+  BOUNDARIES.forEach(({ key, color }) => {
     lines[key] = group.append("line")
       .attr("class", "peak_region_line")
       .attr("stroke", color)
@@ -245,10 +268,6 @@ export function render_peak_region_overlay({ svg, series, x_scale, y_scale, marg
       .attr("class", "peak_region_handle")
       .attr("data-boundary-key", key)
       .attr("fill", "transparent")
-      .attr("tabindex", 0)
-      .attr("role", "slider")
-      .attr("aria-orientation", "horizontal")
-      .attr("aria-label", `${label} peak region boundary for ${row.name}. Use arrow keys for small movements and Shift plus arrow for larger movements.`)
       .style("cursor", "ew-resize");
 
     let drag_offset = 0;
@@ -273,21 +292,6 @@ export function render_peak_region_overlay({ svg, series, x_scale, y_scale, marg
       });
     hitAreas[key].call(drag);
 
-    hitAreas[key]
-      .on("focus", () => lines[key].classed("peak_region_line_focus", true))
-      .on("blur", () => lines[key].classed("peak_region_line_focus", false))
-      .on("keydown", (event) => {
-        const step = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
-        if (!step) return;
-        event.preventDefault();
-        const span = Math.abs(domain[1] - domain[0]);
-        const scale = event.shiftKey ? KEY_STEP_LARGE : KEY_STEP;
-        const [min, max] = boundary_limits(key, live, domain);
-        const value = Math.min(max, Math.max(min, get_value(live, key) + step * scale * span));
-        set_value(live, key, value);
-        redraw();
-        commit();
-      });
   });
 
   redraw();
