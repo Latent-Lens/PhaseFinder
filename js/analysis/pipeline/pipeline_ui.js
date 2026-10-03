@@ -40,8 +40,10 @@ import {
   show_progress,
   update_progress,
   hide_progress,
+  show_progress_cancel,
   next_frame,
 } from "../../ui/status_channels.js";
+import { run_peak_tracking_time_qc_in_worker } from "../cell_cycle/fit_client.js";
 import { load_pipeline, load_pipeline_silently, get_pipeline } from "./pipeline_loader.js";
 import { derive_gate_state, aggregate_gate_state } from "./pipeline_state.js";
 import { init_scatter_modal, open_scatter_modal } from "../gating/scatter_modal.js";
@@ -96,6 +98,13 @@ export function qc_completion_message(rows, pipeline, checked, method_note = "")
     (outcome) => outcome.sample === row.name && outcome.type !== "success",
   ));
   const failures = outcomes.filter((outcome) => outcome.type === "failed_unexpected");
+  const withheldCellGates = checked.includes(2)
+    ? rows.filter((row) => pipeline.get_state(row.name)?.scatterGate?.reviewRequired
+      && row.data?.masks?.scatter == null).length
+    : 0;
+  const cellGateNote = withheldCellGates
+    ? ` Cell Gate mask withheld for ${withheldCellGates} sample${withheldCellGates === 1 ? "" : "s"} pending review; 100% of events entering Cell Gate were retained.`
+    : "";
   return {
     incomplete,
     outcomes,
@@ -104,7 +113,7 @@ export function qc_completion_message(rows, pipeline, checked, method_note = "")
       ? failures.length
         ? `Pre-model QC failed for ${failures.length} sample/stage result${failures.length === 1 ? "" : "s"}: ${failures.map((failure) => `${failure.sample} — ${failure.stage}: ${failure.reason}`).join("; ")}. Review the sample/channel data and retry.`
         : incomplete.length
-        ? `Pre-model QC incomplete for ${incomplete.length} sample${incomplete.length === 1 ? "" : "s"}; see the QC status column.`
+        ? `Pre-model QC incomplete for ${incomplete.length} sample${incomplete.length === 1 ? "" : "s"}; see the QC status column.${cellGateNote}`
         : `Pre-model QC applied: ${checked.map((filterIndex) => QC_LOST_COLUMNS[filterIndex].label.replace(/ lost$/, "")).join(", ")}.${method_note}`
       : "Pre-model QC cleared.",
   };
@@ -215,8 +224,8 @@ function write_frame_column(frame, ids, col_name, value_for_id) {
 const QC_FILTER_INDICES = [0, 1, 2, 3];
 let qc_busy = false;
 
-const is_qc_active = (button) => button?.getAttribute("aria-pressed") === "true";
-const set_qc_active = (button, active) => button?.setAttribute("aria-pressed", active ? "true" : "false");
+const is_qc_active = (button) => button?.getAttribute("data-active") === "true";
+const set_qc_active = (button, active) => button?.setAttribute("data-active", active ? "true" : "false");
 
 /*
 
@@ -315,7 +324,7 @@ Purpose:
 	attribute (QC-02/AD-3) from the shared gate-state matrix, aggregating every
 	plotted row's state for that filter to the single worst one present (e.g. one
 	sample needing review is enough to mark the whole gate "needs-review"). Leaves
-	`aria-pressed` untouched -- it keeps meaning "the toggle is on", set by
+	`data-active` untouched -- it keeps meaning "the toggle is on", set by
 	set_qc_active(); appearance is driven by `data-gate-state` alone.
 
 Input:
@@ -765,13 +774,19 @@ async function apply_qc_selection() {
     if (checked.includes(filterIndex)) qc_gate_buttons[filterIndex]?.setAttribute("data-gate-state", "running");
   });
   let progress_operation = null;
+  let pipeline = null;
+  let startedGates = false;
+  const controller = new AbortController();
   try {
     const progress_label = qc_progress_label(checked);
     progress_operation = show_progress(progress_label);
     set_status_bar(`Working: ${progress_label}`, false, null, progress_operation);
     update_progress(0, progress_label, "Preparing QC inputs…", "", progress_operation);
     await next_frame();
-    const pipeline = await load_pipeline();
+    if (checked.includes(TIME_QC_FILTER_INDEX) && time_qc_method_options().method === "peak-tracking") {
+      show_progress_cancel(() => controller.abort(), progress_operation);
+    }
+    pipeline = await load_pipeline();
     // Time, Cell, and Singlet QC need companion channels; wait if they are still loading.
     if (checked.some((filterIndex) => filterIndex >= 1)) {
       if (rows.some((row) => row.data && row.data.companionsPending)) {
@@ -780,10 +795,14 @@ async function apply_qc_selection() {
       await ensure_companions_loaded(rows);
     }
 
+    if (controller.signal.aborted) throw new DOMException("QC cancelled.", "AbortError");
+
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
       update_progress((100 * index) / rows.length, progress_label, row.name, "", progress_operation);
       await next_frame();
+      if (controller.signal.aborted) throw new DOMException("QC cancelled.", "AbortError");
+      startedGates = true;
       pipeline.reset_qc_gates(row);
       for (const filterIndex of checked) {
         try {
@@ -797,10 +816,33 @@ async function apply_qc_selection() {
           // Time QC runs whichever Time QC method is currently selected
           // (time_qc_settings.js); its options are part of the operation's cache
           // key, so switching methods recomputes instead of reusing the other one.
-          else if (filterIndex === 1) pipeline.apply_time_qc_fast(row, time_qc_method_options());
+          else if (filterIndex === 1) {
+            const options = time_qc_method_options();
+            if (options.method === "peak-tracking") {
+              const data = row.data;
+              const handle = run_peak_tracking_time_qc_in_worker(
+                { channels: data.channels, eventCount: data.eventCount, pnr: data.pnr },
+                data.masks?.structural ?? null, options,
+                { onProgress: ({ completed, total, stage }) => update_progress(
+                  (100 * (index + completed / total)) / rows.length,
+                  progress_label, `${row.name}: ${stage}`, "", progress_operation,
+                ) },
+              );
+              const abort = () => handle.cancel();
+              controller.signal.addEventListener("abort", abort, { once: true });
+              try {
+                const result = await handle.promise;
+                if (controller.signal.aborted) throw new DOMException("QC cancelled.", "AbortError");
+                pipeline.commit_peak_tracking_time_qc_result(row, result, options);
+              } finally {
+                controller.signal.removeEventListener("abort", abort);
+              }
+            } else pipeline.apply_time_qc_fast(row, options);
+          }
           else if (filterIndex === 2) pipeline.apply_cell_gate_fast(row);
           else pipeline.apply_singlet_gate_fast(row);
         } catch (error) {
+          if (error.name === "AbortError") throw error;
           pipeline.record_qc_failure(row, filterIndex, error);
           console.error(`QC failed for ${row.name} at ${QC_FILTER_NAMES[filterIndex]}`, error);
           break;
@@ -839,6 +881,34 @@ async function apply_qc_selection() {
       );
     }
   } catch (error) {
+    if (error.name === "AbortError") {
+      if (pipeline && startedGates) {
+        rows.forEach((row) => pipeline.reset_qc_gates(row));
+        regenerate_histograms(rows, pipeline);
+      }
+      if (pipeline) {
+        const requiredQc = checked.map((index) => ["structural", "time", "scatter", "singlet"][index]);
+        rows.forEach((row) => {
+          const state = pipeline.get_state(row.name);
+          if (state) state.requiredQc = requiredQc;
+        });
+        const matrix = compute_gate_state_matrix(rows, pipeline, checked);
+        update_qc_columns(rows, pipeline, checked, matrix);
+        update_gate_button_states(rows, matrix);
+        render_time_qc_summary(rows, pipeline, checked);
+        render_density_plot();
+      } else {
+        QC_FILTER_INDICES.forEach((index) => {
+          if (checked.includes(index)) qc_gate_buttons[index]?.setAttribute("data-gate-state", "not-run");
+        });
+        qc_gate_run_all?.setAttribute("data-gate-state", "not-run");
+      }
+      set_status_bar(startedGates
+        ? "QC cancelled; no gates were applied. Apply QC again to retry."
+        : "QC cancelled; previous gates remain in effect. Apply QC again to retry.", false, null, progress_operation);
+      hide_progress(0, progress_operation);
+      return;
+    }
     console.error("Pre-model QC failed before per-stage completion", error);
     set_status_bar(`Pre-model QC failed: ${error.message}`, true, null, progress_operation, error);
     // An exception here happened before any per-row product was written, so

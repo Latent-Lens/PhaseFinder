@@ -50,6 +50,7 @@ async function importAppModule(relativePath) {
 
 const { FCSParser } = await importAppModule("js/fcs/parser.js");
 const { runTimeQC } = await importAppModule("js/analysis/qc/acquisition_time_qc.js");
+const { runPeakTrackingTimeQC } = await importAppModule("js/analysis/qc/peak_tracking_time_qc.js");
 const { gateByPulseGeometry } = await importAppModule("js/analysis/gating/pulse_geometry_gate.js");
 const { gateMainBiologicalCloud } = await importAppModule("js/analysis/gating/scatter_gmm_gate.js");
 
@@ -59,7 +60,9 @@ const TIME_PARAMETER_INDEX = 6; // fixed parameter order the generator writes: D
 function buildDataset(rows, metadata) {
   const channels = {};
   for (const [rawName, key] of Object.entries(CHANNEL_KEY_MAPPING)) {
-    channels[key] = rows.map(row => row[rawName]);
+    const vals = rows.map(row => row[rawName]);
+    channels[key] = vals;
+    channels[rawName] = vals;
   }
   const pnrTime = Number(metadata[`P${TIME_PARAMETER_INDEX}R`]);
   return { channels, eventCount: rows.length, pnr: { Time: pnrTime } };
@@ -104,6 +107,7 @@ for (const [name, truth] of Object.entries(manifest.fixtures)) {
   const dataset = buildDataset(rows, metadata);
 
   const timeQC = runTimeQC(dataset);
+  const peakTrackingQC = runPeakTrackingTimeQC(dataset);
   const pulseGate = gateByPulseGeometry(dataset);
   const scatterGate = gateMainBiologicalCloud(dataset);
 
@@ -118,6 +122,13 @@ for (const [name, truth] of Object.entries(manifest.fixtures)) {
       segmentCount: timeQC.segmentCount,
       flaggedIntervalCount: timeQC.flaggedIntervals?.length ?? 0,
       limitedReliability: timeQC.limitedReliability,
+    },
+    peakTrackingQC: {
+      status: peakTrackingQC.status,
+      skipped: peakTrackingQC.skipped,
+      rejectedEventCount: peakTrackingQC.rejectedEventCount,
+      percentRemoved: peakTrackingQC.percentRemoved,
+      rejectedRegions: peakTrackingQC.rejectedRegions?.length ?? 0,
     },
     pulseGeometry: {
       status: pulseGate.status,
@@ -143,6 +154,8 @@ for (const [name, truth] of Object.entries(manifest.fixtures)) {
     assertTrue((timeQC.flaggedIntervals?.length ?? 0) === 0,
       "expected no flagged Time QC intervals on the stable baseline");
     assertTrue(timeQC.segmentCount === 1, `expected a single acquisition segment, got ${timeQC.segmentCount}`);
+    assertTrue(peakTrackingQC.rejectedEventCount === 0,
+      `expected peak-tracking to reject 0 events on stable baseline, got ${peakTrackingQC.rejectedEventCount}`);
     assertTrue(!(doubletStats.falsePositiveRate > 0.15), `pulse-geometry false-positive rate too high at baseline (${doubletStats.falsePositiveRate})`);
     assertTrue(!(debrisStats.falsePositiveRate > 0.15), `scatter-gate false-positive rate too high at baseline (${debrisStats.falsePositiveRate})`);
   } else if (truth.category === "clog" || truth.category === "dropout") {
@@ -150,6 +163,19 @@ for (const [name, truth] of Object.entries(manifest.fixtures)) {
       ?? [truth.injected_disturbance.gap_inserted_before_event_index - 1, truth.injected_disturbance.gap_inserted_before_event_index + 1];
     assertTrue(intervalsOverlapRange(timeQC.flaggedIntervals, range),
       `expected a flagged Time QC interval overlapping ${JSON.stringify(range)}`);
+
+    if (truth.category === "clog") {
+      // Quantify peak-tracking overlap-expansion on known injected disturbance [2400, 3000)
+      const clogIndices = Array.from({ length: 600 }, (_, i) => 2400 + i);
+      const peakTrackingStats = confusionRates(peakTrackingQC.mask ?? peakTrackingQC.timeQCMask, clogIndices);
+      const overlapExpansionOverhead = peakTrackingStats.falsePositive / (peakTrackingStats.truePositive + peakTrackingStats.falsePositive);
+      assertTrue(peakTrackingStats.recall === 1.0,
+        `expected peak-tracking recall = 1.0 on clog disturbance, got ${peakTrackingStats.recall}`);
+      assertTrue(peakTrackingStats.falsePositive === 650,
+        `expected exact 650 clean events falsely rejected due to overlap expansion, got ${peakTrackingStats.falsePositive}`);
+      assertTrue(Math.abs(overlapExpansionOverhead - 0.52) < 0.01,
+        `expected 52% overlap expansion overhead, got ${overlapExpansionOverhead}`);
+    }
   } else if (truth.category === "timer_rollover") {
     assertTrue(timeQC.segmentCount === truth.expected_segment_count,
       `expected segmentCount ${truth.expected_segment_count}, got ${timeQC.segmentCount}`);
@@ -171,6 +197,8 @@ for (const [name, truth] of Object.entries(manifest.fixtures)) {
     // a future fix to the selection rule (or a regression that makes it worse)
     // shows up here rather than silently passing.
     assertTrue(!scatterGate.skipped, "expected the scatter gate to run (not skip) on the debris-dominant fixture");
+    assertTrue(peakTrackingQC.rejectedEventCount === 0,
+      `expected peak tracking to reject 0 events on debris dominant fixture, got ${peakTrackingQC.rejectedEventCount}`);
     assertTrue(debrisStats.recall < 0.5,
       `expected the weight-based main-component selection to invert (recall < 0.5) with debris as the majority, got ${debrisStats.recall}`);
     assertTrue(debrisStats.falsePositiveRate > 0.5,

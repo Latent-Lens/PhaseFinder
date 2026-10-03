@@ -705,13 +705,72 @@ export function buildDeterministicIsolationTree(columns, binCount, options = {})
     queue.push({ rows: split.rightRows, depth: node.depth + 1 });
   }
 
-  let stableNode = terminalNodes[0];
-  for (const node of terminalNodes) {
-    if (node.rows.length > stableNode.rows.length) stableNode = node;
+  if (!terminalNodes.length) {
+    terminalNodes.push({ rows: allRows, depth: 0 });
   }
+
+  // Evaluate candidate terminal nodes using continuity and variance quality criteria
+  // instead of purely greedy size.
+  const scoredNodes = terminalNodes.map((node) => {
+    const rows = [...node.rows].sort((a, b) => a - b);
+    let contiguousRuns = 1;
+    for (let i = 1; i < rows.length; i += 1) {
+      if (rows[i] !== rows[i - 1] + 1) contiguousRuns += 1;
+    }
+    // Temporal continuity: 1.0 for a single continuous run of bins
+    const continuity = rows.length > 0 ? 1 / contiguousRuns : 0;
+
+    // Peak variance quality: lower variance across columns indicates a tighter, more stable population
+    let totalScatter = 0;
+    let scoredColumns = 0;
+    for (const col of columns) {
+      const vals = rows.map((r) => col[r]).filter(Number.isFinite);
+      if (vals.length > 1) {
+        const m = vals.reduce((s, v) => s + v, 0) / vals.length;
+        const variance = vals.reduce((s, v) => s + (v - m) ** 2, 0) / (vals.length - 1);
+        totalScatter += Math.sqrt(variance);
+        scoredColumns += 1;
+      }
+    }
+    const meanScatter = scoredColumns > 0 ? totalScatter / scoredColumns : 0;
+    // Composite stability score: size weighted by continuity and normalized scatter
+    const stabilityScore = node.rows.length * (0.7 + 0.3 * continuity) / (1 + 0.01 * meanScatter);
+    return {
+      node,
+      rows,
+      size: node.rows.length,
+      continuity,
+      meanScatter,
+      stabilityScore,
+    };
+  });
+
+  // Sort by composite stability score descending
+  scoredNodes.sort((a, b) => b.stabilityScore - a.stabilityScore);
+  const stableNode = scoredNodes[0]?.node ?? terminalNodes[0];
+
+  // Detect ambiguity: if multiple terminal nodes exist and the largest node
+  // lacks clear dominance (e.g. <60% of total bins or competing node has >=70% of largest size),
+  // flag that manual review is required rather than silently trusting the selection.
+  const sortedBySize = [...scoredNodes].sort((a, b) => b.size - a.size);
+  const largest = sortedBySize[0];
+  const second = sortedBySize[1];
+  const ambiguous = sortedBySize.length > 1 && (
+    largest.size < binCount * 0.60 ||
+    (second && second.size >= largest.size * 0.70)
+  );
+
   for (const row of stableNode?.rows || allRows) goodBinMask[row] = 1;
 
-  return { goodBinMask, splits, stableNodeSize: stableNode?.rows.length ?? binCount };
+  return {
+    goodBinMask,
+    splits,
+    stableNodeSize: stableNode?.rows.length ?? binCount,
+    ambiguous,
+    reviewRequired: ambiguous,
+    terminalNodeCount: terminalNodes.length,
+    selectedContinuity: scoredNodes[0]?.continuity ?? 1,
+  };
 }
 
 // Light smoothing of a peak track over acquisition order, so a single noisy bin
@@ -960,11 +1019,12 @@ Output:
 
 */
 export function runPeakTrackingTimeQC(dataset, structuralMask = null, options = {}) {
+  const { onProgress, ...settings } = options ?? {};
   const channels = dataset?.channels ?? dataset;
   const rawTime = channels?.Time;
-  const resolved = resolve_options(options);
-  const selectedChannels = (options?.channels && options.channels.length
-    ? options.channels
+  const resolved = resolve_options(settings);
+  const selectedChannels = (settings?.channels && settings.channels.length
+    ? settings.channels
     : DEFAULT_PEAK_TRACKING_CHANNELS
   ).filter((name) => channels?.[name]);
 
@@ -1006,6 +1066,8 @@ export function runPeakTrackingTimeQC(dataset, structuralMask = null, options = 
       ? pnrRange
       : DEFAULT_TIMER_RANGE;
 
+  onProgress?.({ completed: 0, total: 3, stage: "Preparing acquisition bins" });
+
   // Step 1 is shared with the robust-summary method: unwrap the timer, split
   // acquisition segments on unexplained backward jumps, and honour the
   // structural mask without breaking time continuity.
@@ -1014,6 +1076,7 @@ export function runPeakTrackingTimeQC(dataset, structuralMask = null, options = 
     targetBinSize: resolved.minimumEventsPerBin,
     inputMask: structuralMask,
   });
+  onProgress?.({ completed: 1, total: 3, stage: "Tracking population peaks" });
 
   const indexesBySegment = new Map();
   for (let eventIndex = 0; eventIndex < eventCount; eventIndex += 1) {
@@ -1066,12 +1129,18 @@ export function runPeakTrackingTimeQC(dataset, structuralMask = null, options = 
     const reasonsByBin = bins.map(() => new Set());
     let goodBinMask = new Uint8Array(bins.length).fill(1);
 
+    let tree = null;
     if (resolved.isolationTreeEnabled && bins.length >= resolved.isolationTreeMinimumBins) {
-      const tree = buildDeterministicIsolationTree(matrix.columns, bins.length, resolved);
+      tree = buildDeterministicIsolationTree(matrix.columns, bins.length, resolved);
       for (let index = 0; index < bins.length; index += 1) {
         if (tree.goodBinMask[index] !== 1) reasonsByBin[index].add(REJECTION_REASONS.ISOLATION_TREE);
       }
       goodBinMask = tree.goodBinMask;
+      if (tree.reviewRequired) {
+        warnings.push(
+          `Acquisition segment ${segmentId + 1} produced competing candidate populations of comparable size in the isolation tree; manual review of Time QC is required.`,
+        );
+      }
     } else if (resolved.isolationTreeEnabled) {
       warnings.push(
         `Acquisition segment ${segmentId + 1} has only ${bins.length} bins (fewer than ${resolved.isolationTreeMinimumBins}); isolation-tree filtering was skipped and MAD filtering was used alone.`,
@@ -1126,11 +1195,14 @@ export function runPeakTrackingTimeQC(dataset, structuralMask = null, options = 
       goodBinMask,
       peakColumns: matrix.columns,
       peakMetadata: matrix.metadata,
+      isolationTreeAmbiguous: tree?.ambiguous ?? false,
+      isolationTreeReviewRequired: tree?.reviewRequired ?? false,
       rejectionReasons: reasonsByBin.map((reasons) => [...reasons]),
     });
   }
 
   for (const warning of channelWarnings) warnings.push(warning);
+  onProgress?.({ completed: 2, total: 3, stage: "Finalizing retained events" });
 
   // Structurally valid events that peak tracking rejected, and the surviving
   // mask the rest of the pipeline consumes.
@@ -1165,8 +1237,8 @@ export function runPeakTrackingTimeQC(dataset, structuralMask = null, options = 
 
   // QC-04: report requested vs available channels rather than silently dropping a
   // requested channel that wasn't loaded.
-  const requestedChannels = (options?.channels && options.channels.length
-    ? options.channels
+  const requestedChannels = (settings?.channels && settings.channels.length
+    ? settings.channels
     : DEFAULT_PEAK_TRACKING_CHANNELS).map(String);
   const availableChannels = selectedChannels.map(String);
   const missingChannels = requestedChannels.filter((name) => !availableChannels.includes(name));
@@ -1181,22 +1253,26 @@ export function runPeakTrackingTimeQC(dataset, structuralMask = null, options = 
   // segment could be scored (too few events, too few bins, or no persistent peak)
   // is NOT a confident pass -- it is not evaluable, and no events are removed.
   // Partial coverage (some segments left unfiltered), a missing requested channel,
-  // or critical removal qualify the run as limited reliability, which the model
-  // boundary (QC-01) maps to a "degraded" outcome.
+  // ambiguous terminal node selection, or critical removal qualify the run as
+  // limited reliability, which the model boundary (QC-01) maps to a "degraded" outcome.
   const totalSegmentCount = indexesBySegment.size;
   const evaluatedSegmentCount = segmentResults.length;
   const notEvaluable = evaluatedSegmentCount === 0;
+  const treeReviewRequired = segmentResults.some((s) => s.isolationTreeAmbiguous);
   const limitedReliability = notEvaluable
     || missingChannels.length > 0
     || evaluatedSegmentCount < totalSegmentCount
-    || percentRemoved > 50;
+    || percentRemoved > 50
+    || treeReviewRequired;
+
+  onProgress?.({ completed: 3, total: 3, stage: "Peak-tracking complete" });
 
   return {
     ...prepared,
     method: "peak-tracking",
     algorithmVersion: PEAK_TRACKING_ALGORITHM_VERSION,
     skipped: false,
-    status: notEvaluable ? "time QC not evaluable" : "time QC complete",
+    status: notEvaluable ? "time QC not evaluable" : (treeReviewRequired ? "time QC review required" : "time QC complete"),
     reason: notEvaluable
       ? "No acquisition segment could be scored (too few events, too few bins, or no persistent peak); no events were removed."
       : null,

@@ -297,8 +297,7 @@ export function renderTimeQcDiagnosticSvg(model, { width = 640, height = 260 } =
   ];
 
   return (
-    `<svg viewBox="0 0 ${width} ${height}" class="tqc_diag_svg" role="img" ` +
-    `aria-label="Acquisition-order peak-tracking diagnostic for ${escapeXml(model.activeChannel ?? "the selected channel")}">` +
+    `<svg viewBox="0 0 ${width} ${height}" class="tqc_diag_svg">` +
     layers.join("") +
     `<g class="tqc_diag_axes">${axis.join("")}</g>` +
     `</svg>`

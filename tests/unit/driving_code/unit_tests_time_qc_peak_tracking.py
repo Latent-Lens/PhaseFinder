@@ -350,6 +350,29 @@ _TESTS = r"""() => {
     };
   });
 
+  run('QC-04: buildDeterministicIsolationTree detects competing terminal nodes and requires manual review', () => {
+    // 16 bins at ~100 and 14 bins at ~200 (competing 53% / 47% populations)
+    const column = Array.from({ length: 30 }, (_, index) => (index < 16 ? 100 + (index % 2) : 200 + (index % 2)));
+    const tree = qc.buildDeterministicIsolationTree([column], column.length, { isolationTreeGainThreshold: 0.5 });
+    return {
+      pass: tree.ambiguous === true && tree.reviewRequired === true && tree.terminalNodeCount >= 2,
+      detail: `ambiguous=${tree.ambiguous}, reviewRequired=${tree.reviewRequired}, nodes=${tree.terminalNodeCount}`,
+    };
+  });
+
+  run('QC-04: runPeakTrackingTimeQC flags limitedReliability when isolation tree stability is ambiguous', () => {
+    // Alternating halves create competing terminal populations in the isolation tree
+    const dataset = makeDataset(6000, (index) => (index < 3100
+      ? { dna: 100, fsc: 60, ssc: 40 }
+      : { dna: 220, fsc: 130, ssc: 90 }), { seed: 55 });
+    const result = qc.runPeakTrackingTimeQC(dataset, null, { isolationTreeMinimumBins: 10, minimumGoodRunBins: 2 });
+    const hasWarning = result.warnings.some((w) => /competing candidate populations|manual review/i.test(w));
+    return {
+      pass: result.limitedReliability === true && (result.status === 'time QC review required' || hasWarning),
+      detail: `status=${result.status}, limitedReliability=${result.limitedReliability}, warnings=${JSON.stringify(result.warnings)}`,
+    };
+  });
+
   // ── Step 9: MAD limits ───────────────────────────────────────────────────
   run('detectMADPeakOutliers flags a sustained shift and spares the stable bins', () => {
     const column = Array.from({ length: 60 }, (_, index) => (index >= 40 && index < 50 ? 140 : 100));
@@ -483,6 +506,43 @@ _TESTS = r"""() => {
     const bins = [{ indexes: [0, 1] }, { indexes: [1, 2] }];
     const badEvents = qc.convertBadBinsToBadEvents(bins, Uint8Array.from([0, 0]), 3);
     return { pass: countMask(badEvents, 1) === 0, detail: Array.from(badEvents).join('') };
+  });
+
+  run('QC-CAL-01 / QC-04: quantify overlap-expansion false rejection under conservative Any vs Majority consensus', () => {
+    // 5 overlapping bins with 50% overlap (step = 2 events, binSize = 4 events)
+    // bin 0: [0, 1, 2, 3], bin 1: [2, 3, 4, 5], bin 2: [4, 5, 6, 7], bin 3: [6, 7, 8, 9], bin 4: [8, 9, 10, 11]
+    const bins = [
+      { indexes: [0, 1, 2, 3] },
+      { indexes: [2, 3, 4, 5] },
+      { indexes: [4, 5, 6, 7] },
+      { indexes: [6, 7, 8, 9] },
+      { indexes: [8, 9, 10, 11] },
+    ];
+    // A localized anomaly affects events [4, 5], causing only bin 2 to be flagged.
+    // Events 4 and 5 also belong to bin 1 and bin 3 (which are good).
+    const badBinMask = Uint8Array.from([0, 0, 1, 0, 0]);
+    const badEventsAny = qc.convertBadBinsToBadEvents(bins, badBinMask, 12);
+    // Any rule rejects [4, 5, 6, 7].
+    // True disturbance was [4, 5]. Events 6 and 7 are clean bystander events falsely rejected.
+    // False rejection count = 2 events, false positive overhead = 2 / 4 = 50%.
+    const anyMaskStr = Array.from(badEventsAny).join('');
+
+    // Evaluate consensus rule (majority of containing bins must be bad)
+    const eventContaining = Array.from({ length: 12 }, () => []);
+    bins.forEach((b, bIdx) => {
+      for (const eIdx of b.indexes) eventContaining[eIdx].push(bIdx);
+    });
+    const badEventsMajority = new Uint8Array(12);
+    for (let e = 0; e < 12; e++) {
+      const badCount = eventContaining[e].filter((bIdx) => badBinMask[bIdx] === 1).length;
+      if (badCount > eventContaining[e].length / 2) badEventsMajority[e] = 1;
+    }
+    const majorityMaskStr = Array.from(badEventsMajority).join('');
+
+    return {
+      pass: anyMaskStr === '000011110000' && majorityMaskStr === '000000000000',
+      detail: `any=${anyMaskStr} (FP=2, 50% overhead), majority=${majorityMaskStr}`,
+    };
   });
 
   // ── End-to-end synthetic acquisition scenarios ───────────────────────────

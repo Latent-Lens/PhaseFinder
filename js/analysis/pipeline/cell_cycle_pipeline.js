@@ -310,6 +310,10 @@ function run_time_qc(data, structuralMask, options = {}) {
   } else {
     throw new Error(`Unsupported Time QC method: ${method}`);
   }
+  return stamp_time_qc_result(result, data, structuralMask, options);
+}
+
+function stamp_time_qc_result(result, data, structuralMask, options) {
   // QC-02 provenance: the exact resolved config, its cache-identity hash, the
   // algorithm version, and the input identity this result was computed against,
   // so a session/report can prove which configuration produced which mask.
@@ -323,6 +327,16 @@ function run_time_qc(data, structuralMask, options = {}) {
     structuralActive: Boolean(structuralMask),
   };
   return result;
+}
+
+export function commit_peak_tracking_time_qc_result(row, result, options) {
+  if (options?.method !== "peak-tracking") throw new Error("A peak-tracking Time QC result is required.");
+  const data = require_row_data(row);
+  const structuralMask = data.masks?.structural ?? null;
+  const stamped = stamp_time_qc_result(result, data, structuralMask, options);
+  const entry = get_precompute_entry(row, data);
+  entry.timeQc.set(time_qc_cache_key(options, Boolean(structuralMask)), stamped);
+  return commit_time_qc(row, stamped);
 }
 
 /*

@@ -14,7 +14,7 @@
 // GATE_STATES / derive_gate_state() (QC-02, AD-3): the gate-state vocabulary
 // every pre-model QC surface (sidebar toggle buttons, metadata table status
 // column) renders from. Before this, "did the gate succeed" was read off
-// `aria-pressed`, which only ever meant "is the toggle on" -- there was no
+// `data-active`, which only ever meant "is the toggle on" -- there was no
 // third state for "the gate ran but produced a result that needs review"
 // (e.g. the scatter gate's `reviewRequired`), so a reviewed-but-incomplete
 // gate rendered identically to a cleanly-applied one in the sidebar while the
@@ -165,7 +165,8 @@ function create_modeling_state() {
     peakSelection: {
       automaticRegions: null,
       regions: null,
-      source: "automatic", // automatic | alternative | manual
+      source: "automatic", // automatic | alternative | manual | user_assigned
+      userAssignedIdentity: null, // "g1" | "g2" | null
       reviewed: false,
       stale: false,
       revision: 0,
@@ -178,7 +179,7 @@ function create_modeling_state() {
       // not even offer; the Auto selection policy has since been retired.
       modelId: null,
       ratioMode: "bounded",
-      ratioRange: [1.65, 2.25],
+      ratioRange: [1.75, 2.25],
       lockedRatio: 2,
       cvMode: "free",
       contaminants: { debris: "off", aggregate: "off", subG1: "off" },

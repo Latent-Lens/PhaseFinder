@@ -209,10 +209,7 @@ export function render_scatter_gate(
     .range([height - margin.bottom, margin.top]);
 
   const svg = d3.select(djf_scatter_plot).append("svg")
-    .attr("viewBox", `0 0 ${width} ${height}`)
-    .attr("role", "group")
-    .attr("aria-describedby", "djf_scatter_instructions djf_scatter_caption")
-    .attr("aria-label", `${row?.name || "Sample"} interactive FSC-A by SSC-A cell gate`);
+    .attr("viewBox", `0 0 ${width} ${height}`);
 
   svg.append("g")
     .attr("transform", `translate(0,${height - margin.bottom})`)
@@ -280,14 +277,10 @@ export function render_scatter_gate(
     .attr("fill", "none")
     .attr("stroke", "transparent")
     .attr("stroke-width", 18)
-    .attr("pointer-events", "stroke")
-    .attr("tabindex", 0)
-    .attr("role", "button")
-    .attr("aria-label", "Move or rotate the cell gate. Drag to move it, or hold Shift or Ctrl and drag to rotate it around its center. Arrow keys move it in small steps (Shift plus arrow for larger steps); Ctrl plus Left/Right arrow rotates it (Ctrl plus Shift for a larger step).");
+    .attr("pointer-events", "stroke");
   const center_handle = svg.append("circle")
     .attr("class", "djf_scatter_gate_center")
-    .attr("r", 5.5)
-    .attr("aria-hidden", "true");
+    .attr("r", 5.5);
 
   const paint_preview = ({ component, threshold, rotation, preview }) => {
     const mask = preview
@@ -295,8 +288,7 @@ export function render_scatter_gate(
       : result.scatterMask || result.mask;
     const path = line(ellipse_points(component, threshold));
     visible_gate.attr("d", path);
-    gate_handle.attr("d", path)
-      .attr("aria-valuetext", `FSC-A ${component.mean[0].toFixed(2)}, SSC-A ${component.mean[1].toFixed(2)}, rotation ${(rotation * 180 / Math.PI).toFixed(1)}°`);
+    gate_handle.attr("d", path);
     center_handle.attr("cx", x(component.mean[0])).attr("cy", y(component.mean[1]));
     circles
       .attr("fill", (entry, index) => (preview ? mask[index] : mask[entry.eventIndex]) ? "#01a5af" : "#9ca3af")
@@ -401,36 +393,6 @@ export function render_scatter_gate(
 
   gate_handle.call(drag);
   center_handle.call(drag);
-  gate_handle
-    .on("focus", () => visible_gate.classed("djf_scatter_gate_focus", true))
-    .on("blur", () => visible_gate.classed("djf_scatter_gate_focus", false))
-    .on("keydown", (event) => {
-      if ((event.ctrlKey || event.metaKey) && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
-        event.preventDefault();
-        const step = event.key === "ArrowRight" ? 1 : -1;
-        const scale = event.shiftKey ? (15 * Math.PI) / 180 : (3 * Math.PI) / 180;
-        update_preview(selected_component.mean, selected_threshold, true, selected_rotation + step * scale);
-        commit_current_gate({ restoreFocus: true });
-        return;
-      }
-      const movement = {
-        ArrowLeft: [-1, 0],
-        ArrowRight: [1, 0],
-        ArrowDown: [0, -1],
-        ArrowUp: [0, 1],
-      }[event.key];
-      if (!movement) return;
-      event.preventDefault();
-      const scale = event.shiftKey ? 0.05 : 0.01;
-      const x_span = Math.abs(x.domain()[1] - x.domain()[0]);
-      const y_span = Math.abs(y.domain()[1] - y.domain()[0]);
-      const mean = [
-        clamp_to_domain(selected_component.mean[0] + movement[0] * scale * x_span, x.domain()),
-        clamp_to_domain(selected_component.mean[1] + movement[1] * scale * y_span, y.domain()),
-      ];
-      update_preview(mean, selected_threshold, true);
-      commit_current_gate({ restoreFocus: true });
-    });
 
   update_preview(selected_component.mean, selected_threshold, false, selected_rotation, true);
 }
