@@ -62,8 +62,32 @@ def aggregate(root, output, expected):
             record["date"],
         )
         rows.append("| " + " | ".join(str(value).replace("|", "\\|") for value in values) + " |")
+    # Informational records (e.g. Brave, Linux WebKit) that were executed but not part of required gate
+    informational_records = [r for r in records if r["browser"] not in expected]
+    if informational_records:
+        rows.extend([
+            "",
+            "## Informational browser runs (non-gating)",
+            "",
+            "| Browser | Engine | Browser version | OS | Python | Playwright | Result | Date |",
+            "|---|---|---|---|---|---|---|---|",
+        ])
+        for record in informational_records:
+            values = (
+                record["browser"],
+                record.get("engine", "—"),
+                record.get("browser_version", "—"),
+                record.get("os", "—"),
+                record.get("python", "—"),
+                record.get("playwright", "—"),
+                record.get("status", "—").upper(),
+                record.get("date", "—"),
+            )
+            rows.append("| " + " | ".join(str(value).replace("|", "\\|") for value in values) + " |")
+
     Path(output).write_text("\n".join(rows) + "\n", encoding="utf-8")
-    failed = [record["browser"] for record in records if record["status"] != "passed"]
+    expected_set = set(expected)
+    failed = [record["browser"] for record in records if record["browser"] in expected_set and record["status"] != "passed"]
     if missing or failed:
         raise SystemExit(f"Compatibility evidence incomplete: missing={missing}, failed={sorted(failed)}")
 

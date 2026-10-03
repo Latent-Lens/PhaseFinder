@@ -3,19 +3,27 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const root = path.resolve(process.env.DIST_DIR || "dist");
-const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
-const pkg = require("../package.json");
+const sourceDir = path.resolve(process.env.SOURCE_DIR || ".");
+const root = path.resolve(process.env.DIST_DIR || path.join(sourceDir, "dist"));
+const lock = JSON.parse(fs.readFileSync(path.join(sourceDir, "package-lock.json"), "utf8"));
+const pkg = JSON.parse(fs.readFileSync(path.join(sourceDir, "package.json"), "utf8"));
 function localCommit() {
   try {
     return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: sourceDir,
       encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     }).trim();
   } catch (_) {
     return "unknown";
   }
 }
-const sourceCommit = process.env.GITHUB_SHA || localCommit();
+function resolveSourceCommit() {
+  if (process.env.SOURCE_COMMIT) return process.env.SOURCE_COMMIT.trim();
+  const gitCommit = localCommit();
+  if (gitCommit && gitCommit !== "unknown") return gitCommit;
+  return process.env.GITHUB_SHA || "unknown";
+}
+const sourceCommit = resolveSourceCommit();
 const npmVersion = process.env.npm_config_user_agent?.match(/\bnpm\/([^ ]+)/)?.[1]
   || pkg.packageManager?.split("@")[1] || "unknown";
 const metadata = {

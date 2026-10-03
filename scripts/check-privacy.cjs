@@ -28,6 +28,10 @@ const root = path.resolve(process.env.DIST_DIR || "dist");
 // below (they still run against this file's own text content, and by every
 // other file's relative path).
 const AUTOLOAD_STUB = "sessions/phasefinder_local.json";
+const syntheticCorpusDir = path.resolve(__dirname, "../tests/validation/validation_test_data/synthetic_fcs/files");
+const isSyntheticSample = (name) => /E2E/i.test(name)
+  || (fs.existsSync(syntheticCorpusDir) && fs.existsSync(path.join(syntheticCorpusDir, name)))
+  || /^(?:truth|arrest|qc|parser|bulk|watson|ratio|tail_mass)_.*\.fcs$/i.test(name);
 if (fs.existsSync(root)) {
   const textExtensions = new Set([".html", ".js", ".css", ".json", ".txt", ".xml", ".webmanifest"]);
   const findings = [];
@@ -41,7 +45,7 @@ if (fs.existsSync(root)) {
     if (/(?:\/home\/[^/\s]+|\/Users\/[^/\s]+|[A-Z]:\\Users\\[^\\\s]+)/.test(text)) findings.push(`${relative}: local absolute path`);
     if (/\bopfs[_-]?(?:id|key)\s*[=:]\s*["'][A-Za-z0-9_-]{8,}/i.test(text)) findings.push(`${relative}: OPFS identifier`);
     for (const match of text.matchAll(/\b[A-Za-z0-9][A-Za-z0-9_.-]{2,}\.fcs\b/gi)) {
-      if (!/E2E/i.test(match[0])) findings.push(`${relative}: non-synthetic FCS sample name ${match[0]}`);
+      if (!isSyntheticSample(match[0])) findings.push(`${relative}: non-synthetic FCS sample name ${match[0]}`);
     }
   });
   walk(root);

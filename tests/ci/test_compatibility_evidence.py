@@ -34,6 +34,41 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 aggregate(root, output, ["chromium", "firefox"])
 
+    def test_informational_browser_does_not_fail_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            chromium_record = {
+                "browser": "chromium",
+                "browser_version": "150.0.1",
+                "engine": "Chromium",
+                "os": "Linux-6.0",
+                "python": "3.12.9",
+                "playwright": "1.61.0",
+                "status": "passed",
+                "date": "2026-07-30T12:00:00Z",
+            }
+            brave_record = {
+                "browser": "brave",
+                "browser_version": "150.0.1",
+                "engine": "Chromium",
+                "os": "Linux-6.0",
+                "python": "3.12.9",
+                "playwright": "1.61.0",
+                "status": "failed",
+                "date": "2026-07-30T12:00:00Z",
+            }
+            (root / "dir1").mkdir()
+            (root / "dir2").mkdir()
+            (root / "dir1" / "compatibility.json").write_text(json.dumps(chromium_record), encoding="utf-8")
+            (root / "dir2" / "compatibility.json").write_text(json.dumps(brave_record), encoding="utf-8")
+            output = root / "matrix.md"
+            # Gate expects only chromium; brave is informational and failed
+            aggregate(root, output, ["chromium"])
+            table = output.read_text(encoding="utf-8")
+            self.assertIn("Informational browser runs (non-gating)", table)
+            self.assertIn("brave", table)
+            self.assertIn("FAILED", table)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,7 @@
     "lint:js": "eslint js scripts vite.config.js",
     "check:base": "BASE_PATH=/phasefinder/ vite build --outDir dist-base --emptyOutDir && DIST_DIR=dist-base npm run provenance && BASE_PATH=/phasefinder/ DIST_DIR=dist-base npm run check:dist",
     "report:size": "node scripts/report-artifact-delta.cjs",
+    "report:ci-metrics": "python3 scripts/track_ci_metrics.py",
     "provenance": "node scripts/generate-provenance.cjs",
     "check": "npm run preflight && npm run lint:js && npm run check:dom && npm run check:docs && npm run check:imports && npm run check:fixtures && npm run check:privacy && npm test && npm run build && npm run check:dist && npm run check:privacy"
   },
@@ -47,7 +48,6 @@
   },
   "homepage": "https://github.com/Latent-Lens/PhaseFinder#readme",
   "devDependencies": {
-    "axe-core": "^4.12.1",
     "eslint": "^10.8.0",
     "globals": "^17.8.0",
     "vite": "^8.1.5"
