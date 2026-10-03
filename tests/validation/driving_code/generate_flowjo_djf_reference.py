@@ -182,6 +182,7 @@ def build_reference(xlsx: Path, watson_xlsx: Path, fcs_dir: Path, do_hash: bool)
             "parameters": 34,
             "channel_range_pnr": 1000,
             "note": "FlowJo's exact pre-fit gating (debris/singlet gates, live-cell scatter gate) is not captured in the workbook; residual gating differences are a documented source of small discrepancies.",
+            "ratio_convention_note": "The G2:G1 ratio comparison is NOT a plain accuracy check: FlowJo's platform can constrain the fitted ratio toward 2.0, while PhaseFinder fits it freely and reproduces a real sub-2.0 biological effect. See docs/scientific-result-contract.md 'G2:G1 mean ratio -- do not tune toward the FlowJo reference (MODEL-01)' and the manifest's flowjo_async_djf.interpretation.flowjo_djf.ratio_convention_difference before treating a ratio delta here as error.",
         },
         "sample_count": len(records),
         "fcs_matched": matched,

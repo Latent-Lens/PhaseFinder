@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+ <FCML executionTime="1510" >
+   <QueryInfo isWindowsVistaOr7="0" />
+   <Session valid="0"  licenseValid="0"  eulaAccepted="0"  signatureVerified="0"  errorCode="-999"  sessionId="-1424266319"  authType="" />
+   <Engine engineBuild="5.00000"  numEngineThreads="9"  blockReadSize="64000"  maxNumQueries="256" >
+     <Sessions>
+       <Session valid="0"  eulaAccepted="0"  signatureVerified="0"  openSSL="1"  authType="none"  sessionKey="-1424266319"  HWA="REDACTED-HWA"  numberOfRequests="0"  numberOfFilesDataLoad="0"  numberOfFilesRemoved="0"  creationTime="1789831963"  timestamp="1789831966"  numEngineThreads="9" >
+         <SampleCache maxSampleCacheDataSize="29491"  totalMemoryConsumed="0" >
+         </SampleCache>
+       </Session>
+     </Sessions>
+   </Engine>
+   <Summary engineVersion="5.00000"  flowJoVersion="10.10.2"  svnRevision="28a83e77"  OS="windows 11"  dateTime="09/19/2026 11:32:46" />
+ </FCML>

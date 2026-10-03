@@ -491,7 +491,8 @@
         "flowjo_djf": {
           "reference_method": "FlowJo Dean-Jett-Fox (DJF) model, fitted per sample (30 samples).",
           "same_model_family": true,
-          "note": "Same model family (DJF-vs-DJF) run by an established tool, so close agreement is the expectation; residual differences reflect pre-fit gating not captured in the workbook and optimizer/parameterization differences."
+          "note": "Same model family (DJF-vs-DJF) run by an established tool, so close agreement is the expectation; residual differences reflect pre-fit gating not captured in the workbook and optimizer/parameterization differences.",
+          "ratio_convention_difference": "The g2_g1_ratio_abs=0.06 tolerance below is deliberately wide, not slack: FlowJo's cell-cycle platform supports constraining the fitted G2:G1 mean-peak ratio, and this reference's values cluster tightly around 2.0 (observed range 1.94-2.29, plus ~0.29% quantization from integer-rounded stored means). PhaseFinder fits the ratio freely and lands near 1.98 on this same 30-sample set, which is NOT tuned toward 2.0 -- it reproduces a documented biological effect (chromatin condensation restricting intercalating-dye access in G2/M; Darzynkiewicz et al., https://pmc.ncbi.nlm.nih.gov/articles/PMC2967208/). A ratio delta near or past tolerance on this comparison is expected convention disagreement, not evidence of a PhaseFinder defect, and must not be closed by biasing g2_mean toward 2x g1_mean. Full decomposition: docs/scientific-result-contract.md, section 'G2:G1 mean ratio -- do not tune toward the FlowJo reference (MODEL-01)'."
         },
         "flowreader_watson": {
           "reference_method": "Flowreader classic Watson model (15 mat-a samples).",

@@ -1,0 +1,718 @@
+<?xml version="1.0" encoding="UTF-8"?>
+ <Workspace version="20.0"  modDate="Sat Sep 19 11:52:09 EDT 2026"  clientTimestamp="1789833129789"  flowJoVersion="10.10.2"  drawRowBorders="1"  drawColumnBorders="1"  curGroup="Compensation"  groupPaneHeight="80"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xmlns:gating="http://www.isac-net.org/std/Gating-ML/v2.0/gating"  xmlns:transforms="http://www.isac-net.org/std/Gating-ML/v2.0/transformations"  xmlns:data-type="http://www.isac-net.org/std/Gating-ML/v2.0/datatypes"  xsi:schemaLocation="http://www.isac-net.org/std/Gating-ML/v2.0/gating http://www.isac-net.org/std/Gating-ML/v2.0/gating/Gating-ML.v2.0.xsd http://www.isac-net.org/std/Gating-ML/v2.0/transformations http://www.isac-net.org/std/Gating-ML/v2.0/gating/Transformations.v2.0.xsd http://www.isac-net.org/std/Gating-ML/v2.0/datatypes http://www.isac-net.org/std/Gating-ML/v2.0/gating/DataTypes.v2.0.xsd "  nonAutoSaveFileName="file:/REDACTED-PATH/djf_seed.wsp" >
+   <WindowPosition x="898"  y="-1080"  width="1037"  height="822"  displayed="1"  panelState="" />
+   <TextTraits font="SansSerif"  size="11"  name=""  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+   <Columns>
+     <TColumn width="446" >
+       <Property key="fj.appnode.prop.name" />
+     </TColumn>
+     <TColumn width="287" >
+       <Property key="fj.appnode.prop.statistic" />
+     </TColumn>
+     <TColumn width="286" >
+       <Property key="fj.appnode.prop.ncells" />
+     </TColumn>
+   </Columns>
+   <Matrices/>
+   <Cytometers>
+     <Cytometer name="MACSQUANT"  cyt="MACSQuant VYB,2.13.3+164.g7acae8a3"  useFCS3="1"  extraNegs="0"  widthBasis="-1"  linMin="0"  logMin="0.1"  linMax="1000"  logMax="1000"  linearRescale="1"  logRescale="1"  linFromKW="1"  logFromKW="1"  useGain="0"  useTransform="0"  transformType="LOG"  manufacturer=""  serialnumber=""  homepage="workspaces-and-samples/flowjo-and-your-cytometer/ws-cytometer-miltenyi/"  icon="mylt.png" >
+       <LinParams>
+         <Param>time</Param>
+       </LinParams>
+       <LogParams/>
+       <FilterParams/>
+       <TransformStore/>
+     </Cytometer>
+   </Cytometers>
+   <Groups>
+     <GroupNode name="All Samples"  annotation=""  owningGroup="All Samples"  expanded="1"  sortPriority="10"  count="-1" >
+       <Graph smoothing="0"  backColor="#ffffff"  foreColor="#000000"  type="Pseudocolor"  fast="1" >
+         <Axis dimension="x"  name=""  label=""  auto="auto" />
+         <Axis dimension="y"  name=""  label=""  auto="auto" />
+         <GraphSettings level="5%"  smoothingHighResolution="1"  contourHighResolution="1"  histogramSmoothingCount="0"  graphResolution="256"  showOutliers="0"  drawLargeDots="0"  dotsToDraw="8000"  tint="le.chartfill.tinted.40"  lineWeight="le.lineweight.normal"  lineStyle="le.linestyle.solid" />
+         <GraphEnvironment showGrid="0"  showAxes="tnlTNL"  showGates="1"  showFreqOnPlots="1"  showGateNameOnPlots="1"  showMedians="0"  showUncomped="0"  addEventParam="0"  lastYAxisName="" >
+           <TextTraits font="SansSerif"  size="11"  name="Labels"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+           <TextTraits font="SansSerif"  size="11"  name="LayoutGates"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+           <TextTraits font="SansSerif"  size="9"  name="Numbers"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+           <TextTraits font="SansSerif"  size="9"  name="Legend"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+         </GraphEnvironment>
+       </Graph>
+       <Group name="All Samples"  live="1"  role="ws.group.dlog.test"  key=""  synchronized="0"  foreground="#000000"  fontStyle="bold" >
+         <Criteria/>
+         <SampleRefs>
+           <SampleRef sampleID="1" />
+         </SampleRefs>
+         <Keywords/>
+       </Group>
+     </GroupNode>
+     <GroupNode name="Compensation"  annotation=""  owningGroup="Compensation"  expanded="1"  sortPriority="10"  count="-1" >
+       <Graph smoothing="0"  backColor="#ffffff"  foreColor="#000000"  type="Pseudocolor"  fast="1" >
+         <Axis dimension="x"  name=""  label=""  auto="auto" />
+         <Axis dimension="y"  name=""  label=""  auto="auto" />
+         <GraphSettings level="5%"  smoothingHighResolution="1"  contourHighResolution="1"  histogramSmoothingCount="0"  graphResolution="256"  showOutliers="0"  drawLargeDots="0"  dotsToDraw="8000"  tint="le.chartfill.tinted.40"  lineWeight="le.lineweight.normal"  lineStyle="le.linestyle.solid" />
+         <GraphEnvironment showGrid="0"  showAxes="tnlTNL"  showGates="1"  showFreqOnPlots="1"  showGateNameOnPlots="1"  showMedians="0"  showUncomped="0"  addEventParam="0"  lastYAxisName="" >
+           <TextTraits font="SansSerif"  size="11"  name="Labels"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+           <TextTraits font="SansSerif"  size="11"  name="LayoutGates"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+           <TextTraits font="SansSerif"  size="9"  name="Numbers"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+           <TextTraits font="SansSerif"  size="9"  name="Legend"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+         </GraphEnvironment>
+       </Graph>
+       <Group name="Compensation"  live="1"  role="ws.group.dlog.compensation"  key=""  synchronized="0"  foreground="#bc1900"  fontStyle="bold" >
+         <Criteria>
+           <Criterion connector="And"  keyword="$FIL"  function="Contains"  value="unstained" />
+           <Criterion connector="Or"  keyword="$FIL"  function="Contains"  value="comp" />
+         </Criteria>
+         <SampleRefs>
+           <SampleRef sampleID="1" />
+         </SampleRefs>
+         <Keywords/>
+       </Group>
+     </GroupNode>
+   </Groups>
+   <SampleList>
+     <Sample>
+       <DataSet uri="file:/REDACTED-PATH/EDS2026-03-26_async_1468f__A6.0001.fcs"  sampleID="1" />
+       <Transformations>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="240.345"  gain="1" >
+           <data-type:parameter data-type:name="Time" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="HDR-CE" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="HDR-SE" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="100"  gain="1" >
+           <data-type:parameter data-type:name="HDR-V" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="FSC-A" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="FSC-H" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="FSC-W" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="SSC-A" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="SSC-H" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="SSC-W" />
+         </transforms:linear>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL1-A" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL1-H" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL1-W" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL2-A" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL2-H" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL2-W" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL3-A" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL3-H" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL3-W" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL4-A" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL4-H" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL4-W" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL5-A" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL5-H" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL5-W" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL6-A" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL6-H" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL6-W" />
+         </transforms:log>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="FL7-A" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="FL7-H" />
+         </transforms:linear>
+         <transforms:linear transforms:minRange="0"  transforms:maxRange="1000"  gain="1" >
+           <data-type:parameter data-type:name="FL7-W" />
+         </transforms:linear>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL8-A" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL8-H" />
+         </transforms:log>
+         <transforms:log transforms:offset="0.1"  transforms:decades="4" >
+           <data-type:parameter data-type:name="FL8-W" />
+         </transforms:log>
+       </Transformations>
+       <Keywords>
+         <Keyword name="FJ_FCS_VERSION"  value="3.1" />
+         <Keyword name="$EXP"  value="REDACTED-OPERATOR" />
+         <Keyword name="$SYS"  value="MACSQuantify,2.13.3+164.g7acae8a3" />
+         <Keyword name="$CYT"  value="MACSQuant VYB,2.13.3+164.g7acae8a3" />
+         <Keyword name="$CYTSN"  value="REDACTED-SERIAL" />
+         <Keyword name="$CELLS"  value="async_1468f" />
+         <Keyword name="$DATE"  value="2026-Mar-26" />
+         <Keyword name="$BTIM"  value="10:02:53" />
+         <Keyword name="$ETIM"  value="10:07:20" />
+         <Keyword name="$PROJ"  value="REDACTED-PROJECT" />
+         <Keyword name="$TIMESTEP"  value="1" />
+         <Keyword name="$LAST_MODIFIED"  value="2026-Mar-26 10:07:20" />
+         <Keyword name="$LAST_MODIFIER"  value="REDACTED-OPERATOR" />
+         <Keyword name="$ORIGINALITY"  value="Original" />
+         <Keyword name="$PLATENAME"  value="REDACTED-PLATE" />
+         <Keyword name="$WELLID"  value="A6" />
+         <Keyword name="$TR"  value="FSC,7.27168" />
+         <Keyword name="$VOL"  value="100000" />
+         <Keyword name="$FIL"  value="EDS2026-03-26_async_1468f__A6.0001.mqd" />
+         <Keyword name="$PAR"  value="34" />
+         <Keyword name="$TOT"  value="460415" />
+         <Keyword name="$ABRT"  value="0" />
+         <Keyword name="$LOST"  value="0" />
+         <Keyword name="$MODE"  value="L" />
+         <Keyword name="$DATATYPE"  value="F" />
+         <Keyword name="$BYTEORD"  value="1,2,3,4" />
+         <Keyword name="$SPILLOVER"  value="0" />
+         <Keyword name="$P1N"  value="Time" />
+         <Keyword name="$P1B"  value="32" />
+         <Keyword name="$P1E"  value="0.0,0.0" />
+         <Keyword name="$P1D"  value="Linear,0,240.345" />
+         <Keyword name="$P1R"  value="240.345" />
+         <Keyword name="$P1G"  value="1" />
+         <Keyword name="$P1S"  value="HDR-T" />
+         <Keyword name="$P2N"  value="HDR-CE" />
+         <Keyword name="$P2B"  value="32" />
+         <Keyword name="$P2E"  value="0.0,0.0" />
+         <Keyword name="$P2D"  value="Linear,0,1000" />
+         <Keyword name="$P2R"  value="1000" />
+         <Keyword name="$P2G"  value="1" />
+         <Keyword name="$P2S"  value="HDR-CE" />
+         <Keyword name="$P3N"  value="HDR-SE" />
+         <Keyword name="$P3B"  value="32" />
+         <Keyword name="$P3E"  value="0.0,0.0" />
+         <Keyword name="$P3D"  value="Linear,0,1000" />
+         <Keyword name="$P3R"  value="1000" />
+         <Keyword name="$P3G"  value="1" />
+         <Keyword name="$P3S"  value="HDR-SE" />
+         <Keyword name="$P4N"  value="HDR-V" />
+         <Keyword name="$P4B"  value="32" />
+         <Keyword name="$P4E"  value="0.0,0.0" />
+         <Keyword name="$P4D"  value="Linear,0,100" />
+         <Keyword name="$P4R"  value="100" />
+         <Keyword name="$P4G"  value="1" />
+         <Keyword name="$P4S"  value="HDR-V" />
+         <Keyword name="$P5N"  value="FSC-A" />
+         <Keyword name="$P5B"  value="32" />
+         <Keyword name="$P5E"  value="0.0,0.0" />
+         <Keyword name="$P5D"  value="Linear,0,1000" />
+         <Keyword name="$P5R"  value="1000" />
+         <Keyword name="$P5G"  value="1" />
+         <Keyword name="$P5S"  value="FSC-A" />
+         <Keyword name="$P5F"  value="561_10 nm" />
+         <Keyword name="$P5L"  value="561nm" />
+         <Keyword name="$P5O"  value="100mW" />
+         <Keyword name="$P5V"  value="395" />
+         <Keyword name="$P5T"  value="-110" />
+         <Keyword name="$P6N"  value="FSC-H" />
+         <Keyword name="$P6B"  value="32" />
+         <Keyword name="$P6E"  value="0.0,0.0" />
+         <Keyword name="$P6D"  value="Linear,0,1000" />
+         <Keyword name="$P6R"  value="1000" />
+         <Keyword name="$P6G"  value="1" />
+         <Keyword name="$P6S"  value="FSC-H" />
+         <Keyword name="$P6F"  value="561_10 nm" />
+         <Keyword name="$P6L"  value="561nm" />
+         <Keyword name="$P6O"  value="100mW" />
+         <Keyword name="$P6V"  value="395" />
+         <Keyword name="$P6T"  value="-110" />
+         <Keyword name="$P7N"  value="FSC-W" />
+         <Keyword name="$P7B"  value="32" />
+         <Keyword name="$P7E"  value="0.0,0.0" />
+         <Keyword name="$P7D"  value="Linear,0,1000" />
+         <Keyword name="$P7R"  value="1000" />
+         <Keyword name="$P7G"  value="1" />
+         <Keyword name="$P7S"  value="FSC-W" />
+         <Keyword name="$P7F"  value="561_10 nm" />
+         <Keyword name="$P7L"  value="561nm" />
+         <Keyword name="$P7O"  value="100mW" />
+         <Keyword name="$P7V"  value="395" />
+         <Keyword name="$P7T"  value="-110" />
+         <Keyword name="$P8N"  value="SSC-A" />
+         <Keyword name="$P8B"  value="32" />
+         <Keyword name="$P8E"  value="0.0,0.0" />
+         <Keyword name="$P8D"  value="Linear,0,1000" />
+         <Keyword name="$P8R"  value="1000" />
+         <Keyword name="$P8G"  value="1" />
+         <Keyword name="$P8S"  value="SSC-A" />
+         <Keyword name="$P8F"  value="561_10 nm" />
+         <Keyword name="$P8L"  value="561nm" />
+         <Keyword name="$P8O"  value="100mW" />
+         <Keyword name="$P8V"  value="370" />
+         <Keyword name="$P8T"  value="-110" />
+         <Keyword name="$P9N"  value="SSC-H" />
+         <Keyword name="$P9B"  value="32" />
+         <Keyword name="$P9E"  value="0.0,0.0" />
+         <Keyword name="$P9D"  value="Linear,0,1000" />
+         <Keyword name="$P9R"  value="1000" />
+         <Keyword name="$P9G"  value="1" />
+         <Keyword name="$P9S"  value="SSC-H" />
+         <Keyword name="$P9F"  value="561_10 nm" />
+         <Keyword name="$P9L"  value="561nm" />
+         <Keyword name="$P9O"  value="100mW" />
+         <Keyword name="$P9V"  value="370" />
+         <Keyword name="$P9T"  value="-110" />
+         <Keyword name="$P10N"  value="SSC-W" />
+         <Keyword name="$P10B"  value="32" />
+         <Keyword name="$P10E"  value="0.0,0.0" />
+         <Keyword name="$P10D"  value="Linear,0,1000" />
+         <Keyword name="$P10R"  value="1000" />
+         <Keyword name="$P10G"  value="1" />
+         <Keyword name="$P10S"  value="SSC-W" />
+         <Keyword name="$P10F"  value="561_10 nm" />
+         <Keyword name="$P10L"  value="561nm" />
+         <Keyword name="$P10O"  value="100mW" />
+         <Keyword name="$P10V"  value="370" />
+         <Keyword name="$P10T"  value="-110" />
+         <Keyword name="$P11N"  value="FL1-A" />
+         <Keyword name="$P11B"  value="32" />
+         <Keyword name="$P11E"  value="0.0,0.0" />
+         <Keyword name="$P11D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P11R"  value="1000" />
+         <Keyword name="$P11G"  value="1" />
+         <Keyword name="$P11S"  value="CFP_VioBlue-A" />
+         <Keyword name="$P11F"  value="450_50 nm" />
+         <Keyword name="$P11L"  value="404nm" />
+         <Keyword name="$P11O"  value="40mW" />
+         <Keyword name="$P11V"  value="400" />
+         <Keyword name="$P11T"  value="-110" />
+         <Keyword name="$P12N"  value="FL1-H" />
+         <Keyword name="$P12B"  value="32" />
+         <Keyword name="$P12E"  value="0.0,0.0" />
+         <Keyword name="$P12D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P12R"  value="1000" />
+         <Keyword name="$P12G"  value="1" />
+         <Keyword name="$P12S"  value="CFP_VioBlue-H" />
+         <Keyword name="$P12F"  value="450_50 nm" />
+         <Keyword name="$P12L"  value="404nm" />
+         <Keyword name="$P12O"  value="40mW" />
+         <Keyword name="$P12V"  value="400" />
+         <Keyword name="$P12T"  value="-110" />
+         <Keyword name="$P13N"  value="FL1-W" />
+         <Keyword name="$P13B"  value="32" />
+         <Keyword name="$P13E"  value="0.0,0.0" />
+         <Keyword name="$P13D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P13R"  value="1000" />
+         <Keyword name="$P13G"  value="1" />
+         <Keyword name="$P13S"  value="CFP_VioBlue-W" />
+         <Keyword name="$P13F"  value="450_50 nm" />
+         <Keyword name="$P13L"  value="404nm" />
+         <Keyword name="$P13O"  value="40mW" />
+         <Keyword name="$P13V"  value="400" />
+         <Keyword name="$P13T"  value="-110" />
+         <Keyword name="$P14N"  value="FL2-A" />
+         <Keyword name="$P14B"  value="32" />
+         <Keyword name="$P14E"  value="0.0,0.0" />
+         <Keyword name="$P14D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P14R"  value="1000" />
+         <Keyword name="$P14G"  value="1" />
+         <Keyword name="$P14S"  value="VioGreen-A" />
+         <Keyword name="$P14F"  value="525_50 nm" />
+         <Keyword name="$P14L"  value="404nm" />
+         <Keyword name="$P14O"  value="40mW" />
+         <Keyword name="$P14V"  value="400" />
+         <Keyword name="$P14T"  value="-20" />
+         <Keyword name="$P15N"  value="FL2-H" />
+         <Keyword name="$P15B"  value="32" />
+         <Keyword name="$P15E"  value="0.0,0.0" />
+         <Keyword name="$P15D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P15R"  value="1000" />
+         <Keyword name="$P15G"  value="1" />
+         <Keyword name="$P15S"  value="VioGreen-H" />
+         <Keyword name="$P15F"  value="525_50 nm" />
+         <Keyword name="$P15L"  value="404nm" />
+         <Keyword name="$P15O"  value="40mW" />
+         <Keyword name="$P15V"  value="400" />
+         <Keyword name="$P15T"  value="-20" />
+         <Keyword name="$P16N"  value="FL2-W" />
+         <Keyword name="$P16B"  value="32" />
+         <Keyword name="$P16E"  value="0.0,0.0" />
+         <Keyword name="$P16D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P16R"  value="1000" />
+         <Keyword name="$P16G"  value="1" />
+         <Keyword name="$P16S"  value="VioGreen-W" />
+         <Keyword name="$P16F"  value="525_50 nm" />
+         <Keyword name="$P16L"  value="404nm" />
+         <Keyword name="$P16O"  value="40mW" />
+         <Keyword name="$P16V"  value="400" />
+         <Keyword name="$P16T"  value="-20" />
+         <Keyword name="$P17N"  value="FL3-A" />
+         <Keyword name="$P17B"  value="32" />
+         <Keyword name="$P17E"  value="0.0,0.0" />
+         <Keyword name="$P17D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P17R"  value="1000" />
+         <Keyword name="$P17G"  value="1" />
+         <Keyword name="$P17S"  value="PE-A" />
+         <Keyword name="$P17F"  value="586_15 nm" />
+         <Keyword name="$P17L"  value="561nm" />
+         <Keyword name="$P17O"  value="100mW" />
+         <Keyword name="$P17V"  value="400" />
+         <Keyword name="$P17T"  value="-20" />
+         <Keyword name="$P18N"  value="FL3-H" />
+         <Keyword name="$P18B"  value="32" />
+         <Keyword name="$P18E"  value="0.0,0.0" />
+         <Keyword name="$P18D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P18R"  value="1000" />
+         <Keyword name="$P18G"  value="1" />
+         <Keyword name="$P18S"  value="PE-H" />
+         <Keyword name="$P18F"  value="586_15 nm" />
+         <Keyword name="$P18L"  value="561nm" />
+         <Keyword name="$P18O"  value="100mW" />
+         <Keyword name="$P18V"  value="400" />
+         <Keyword name="$P18T"  value="-20" />
+         <Keyword name="$P19N"  value="FL3-W" />
+         <Keyword name="$P19B"  value="32" />
+         <Keyword name="$P19E"  value="0.0,0.0" />
+         <Keyword name="$P19D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P19R"  value="1000" />
+         <Keyword name="$P19G"  value="1" />
+         <Keyword name="$P19S"  value="PE-W" />
+         <Keyword name="$P19F"  value="586_15 nm" />
+         <Keyword name="$P19L"  value="561nm" />
+         <Keyword name="$P19O"  value="100mW" />
+         <Keyword name="$P19V"  value="400" />
+         <Keyword name="$P19T"  value="-20" />
+         <Keyword name="$P20N"  value="FL4-A" />
+         <Keyword name="$P20B"  value="32" />
+         <Keyword name="$P20E"  value="0.0,0.0" />
+         <Keyword name="$P20D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P20R"  value="1000" />
+         <Keyword name="$P20G"  value="1" />
+         <Keyword name="$P20S"  value="dsRed_txRed-A" />
+         <Keyword name="$P20F"  value="615_20 nm" />
+         <Keyword name="$P20L"  value="561nm" />
+         <Keyword name="$P20O"  value="100mW" />
+         <Keyword name="$P20V"  value="400" />
+         <Keyword name="$P20T"  value="-110" />
+         <Keyword name="$P21N"  value="FL4-H" />
+         <Keyword name="$P21B"  value="32" />
+         <Keyword name="$P21E"  value="0.0,0.0" />
+         <Keyword name="$P21D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P21R"  value="1000" />
+         <Keyword name="$P21G"  value="1" />
+         <Keyword name="$P21S"  value="dsRed_txRed-H" />
+         <Keyword name="$P21F"  value="615_20 nm" />
+         <Keyword name="$P21L"  value="561nm" />
+         <Keyword name="$P21O"  value="100mW" />
+         <Keyword name="$P21V"  value="400" />
+         <Keyword name="$P21T"  value="-110" />
+         <Keyword name="$P22N"  value="FL4-W" />
+         <Keyword name="$P22B"  value="32" />
+         <Keyword name="$P22E"  value="0.0,0.0" />
+         <Keyword name="$P22D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P22R"  value="1000" />
+         <Keyword name="$P22G"  value="1" />
+         <Keyword name="$P22S"  value="dsRed_txRed-W" />
+         <Keyword name="$P22F"  value="615_20 nm" />
+         <Keyword name="$P22L"  value="561nm" />
+         <Keyword name="$P22O"  value="100mW" />
+         <Keyword name="$P22V"  value="400" />
+         <Keyword name="$P22T"  value="-110" />
+         <Keyword name="$P23N"  value="FL5-A" />
+         <Keyword name="$P23B"  value="32" />
+         <Keyword name="$P23E"  value="0.0,0.0" />
+         <Keyword name="$P23D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P23R"  value="1000" />
+         <Keyword name="$P23G"  value="1" />
+         <Keyword name="$P23S"  value="mKate_APC-A" />
+         <Keyword name="$P23F"  value="661_20 nm" />
+         <Keyword name="$P23L"  value="561nm" />
+         <Keyword name="$P23O"  value="100mW" />
+         <Keyword name="$P23V"  value="400" />
+         <Keyword name="$P23T"  value="-20" />
+         <Keyword name="$P24N"  value="FL5-H" />
+         <Keyword name="$P24B"  value="32" />
+         <Keyword name="$P24E"  value="0.0,0.0" />
+         <Keyword name="$P24D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P24R"  value="1000" />
+         <Keyword name="$P24G"  value="1" />
+         <Keyword name="$P24S"  value="mKate_APC-H" />
+         <Keyword name="$P24F"  value="661_20 nm" />
+         <Keyword name="$P24L"  value="561nm" />
+         <Keyword name="$P24O"  value="100mW" />
+         <Keyword name="$P24V"  value="400" />
+         <Keyword name="$P24T"  value="-20" />
+         <Keyword name="$P25N"  value="FL5-W" />
+         <Keyword name="$P25B"  value="32" />
+         <Keyword name="$P25E"  value="0.0,0.0" />
+         <Keyword name="$P25D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P25R"  value="1000" />
+         <Keyword name="$P25G"  value="1" />
+         <Keyword name="$P25S"  value="mKate_APC-W" />
+         <Keyword name="$P25F"  value="661_20 nm" />
+         <Keyword name="$P25L"  value="561nm" />
+         <Keyword name="$P25O"  value="100mW" />
+         <Keyword name="$P25V"  value="400" />
+         <Keyword name="$P25T"  value="-20" />
+         <Keyword name="$P26N"  value="FL6-A" />
+         <Keyword name="$P26B"  value="32" />
+         <Keyword name="$P26E"  value="0.0,0.0" />
+         <Keyword name="$P26D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P26R"  value="1000" />
+         <Keyword name="$P26G"  value="1" />
+         <Keyword name="$P26S"  value="PE-Vio770-A" />
+         <Keyword name="$P26F"  value="750 nm LP" />
+         <Keyword name="$P26L"  value="561nm" />
+         <Keyword name="$P26O"  value="100mW" />
+         <Keyword name="$P26V"  value="400" />
+         <Keyword name="$P26T"  value="-20" />
+         <Keyword name="$P27N"  value="FL6-H" />
+         <Keyword name="$P27B"  value="32" />
+         <Keyword name="$P27E"  value="0.0,0.0" />
+         <Keyword name="$P27D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P27R"  value="1000" />
+         <Keyword name="$P27G"  value="1" />
+         <Keyword name="$P27S"  value="PE-Vio770-H" />
+         <Keyword name="$P27F"  value="750 nm LP" />
+         <Keyword name="$P27L"  value="561nm" />
+         <Keyword name="$P27O"  value="100mW" />
+         <Keyword name="$P27V"  value="400" />
+         <Keyword name="$P27T"  value="-20" />
+         <Keyword name="$P28N"  value="FL6-W" />
+         <Keyword name="$P28B"  value="32" />
+         <Keyword name="$P28E"  value="0.0,0.0" />
+         <Keyword name="$P28D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P28R"  value="1000" />
+         <Keyword name="$P28G"  value="1" />
+         <Keyword name="$P28S"  value="PE-Vio770-W" />
+         <Keyword name="$P28F"  value="750 nm LP" />
+         <Keyword name="$P28L"  value="561nm" />
+         <Keyword name="$P28O"  value="100mW" />
+         <Keyword name="$P28V"  value="400" />
+         <Keyword name="$P28T"  value="-20" />
+         <Keyword name="$P29N"  value="FL7-A" />
+         <Keyword name="$P29B"  value="32" />
+         <Keyword name="$P29E"  value="0.0,0.0" />
+         <Keyword name="$P29D"  value="Linear,0,1000" />
+         <Keyword name="$P29R"  value="1000" />
+         <Keyword name="$P29G"  value="1" />
+         <Keyword name="$P29S"  value="GFP_FITC-A" />
+         <Keyword name="$P29F"  value="525_50 nm" />
+         <Keyword name="$P29L"  value="488nm" />
+         <Keyword name="$P29O"  value="30mW" />
+         <Keyword name="$P29V"  value="370" />
+         <Keyword name="$P29T"  value="-20" />
+         <Keyword name="$P30N"  value="FL7-H" />
+         <Keyword name="$P30B"  value="32" />
+         <Keyword name="$P30E"  value="0.0,0.0" />
+         <Keyword name="$P30D"  value="Linear,0,1000" />
+         <Keyword name="$P30R"  value="1000" />
+         <Keyword name="$P30G"  value="1" />
+         <Keyword name="$P30S"  value="GFP_FITC-H" />
+         <Keyword name="$P30F"  value="525_50 nm" />
+         <Keyword name="$P30L"  value="488nm" />
+         <Keyword name="$P30O"  value="30mW" />
+         <Keyword name="$P30V"  value="370" />
+         <Keyword name="$P30T"  value="-20" />
+         <Keyword name="$P31N"  value="FL7-W" />
+         <Keyword name="$P31B"  value="32" />
+         <Keyword name="$P31E"  value="0.0,0.0" />
+         <Keyword name="$P31D"  value="Linear,0,1000" />
+         <Keyword name="$P31R"  value="1000" />
+         <Keyword name="$P31G"  value="1" />
+         <Keyword name="$P31S"  value="GFP_FITC-W" />
+         <Keyword name="$P31F"  value="525_50 nm" />
+         <Keyword name="$P31L"  value="488nm" />
+         <Keyword name="$P31O"  value="30mW" />
+         <Keyword name="$P31V"  value="370" />
+         <Keyword name="$P31T"  value="-20" />
+         <Keyword name="$P32N"  value="FL8-A" />
+         <Keyword name="$P32B"  value="32" />
+         <Keyword name="$P32E"  value="0.0,0.0" />
+         <Keyword name="$P32D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P32R"  value="1000" />
+         <Keyword name="$P32G"  value="1" />
+         <Keyword name="$P32S"  value="PI_LSS-mKate_PerCP-A" />
+         <Keyword name="$P32F"  value="614_50 nm" />
+         <Keyword name="$P32L"  value="488nm" />
+         <Keyword name="$P32O"  value="30mW" />
+         <Keyword name="$P32V"  value="400" />
+         <Keyword name="$P32T"  value="-20" />
+         <Keyword name="$P33N"  value="FL8-H" />
+         <Keyword name="$P33B"  value="32" />
+         <Keyword name="$P33E"  value="0.0,0.0" />
+         <Keyword name="$P33D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P33R"  value="1000" />
+         <Keyword name="$P33G"  value="1" />
+         <Keyword name="$P33S"  value="PI_LSS-mKate_PerCP-H" />
+         <Keyword name="$P33F"  value="614_50 nm" />
+         <Keyword name="$P33L"  value="488nm" />
+         <Keyword name="$P33O"  value="30mW" />
+         <Keyword name="$P33V"  value="400" />
+         <Keyword name="$P33T"  value="-20" />
+         <Keyword name="$P34N"  value="FL8-W" />
+         <Keyword name="$P34B"  value="32" />
+         <Keyword name="$P34E"  value="0.0,0.0" />
+         <Keyword name="$P34D"  value="Logarithmic,4,0.1" />
+         <Keyword name="$P34R"  value="1000" />
+         <Keyword name="$P34G"  value="1" />
+         <Keyword name="$P34S"  value="PI_LSS-mKate_PerCP-W" />
+         <Keyword name="$P34F"  value="614_50 nm" />
+         <Keyword name="$P34L"  value="488nm" />
+         <Keyword name="$P34O"  value="30mW" />
+         <Keyword name="$P34V"  value="400" />
+         <Keyword name="$P34T"  value="-20" />
+         <Keyword name="$NEXTDATA"  value="0" />
+         <Keyword name="$BEGINANALYSIS"  value="0" />
+         <Keyword name="$ENDANALYSIS"  value="0" />
+         <Keyword name="$BEGINSTEXT"  value="0" />
+         <Keyword name="$ENDSTEXT"  value="0" />
+         <Keyword name="$BEGINDATA"  value="6099" />
+         <Keyword name="$ENDDATA"  value="62622539" />
+         <Keyword name="FILENAME"  value="" />
+       </Keywords>
+       <SampleNode name="EDS2026-03-26_async_1468f__A6.0001.mqd"  annotation=""  owningGroup=""  expanded="1"  sortPriority="10"  count="460415"  sampleID="1" >
+         <Graph smoothing="0"  backColor="#ffffff"  foreColor="#000000"  type="Pseudocolor"  fast="1" >
+           <Axis dimension="x"  name="FSC-A"  label=""  auto="auto" />
+           <Axis dimension="y"  name="SSC-A"  label=""  auto="auto" />
+           <GraphSettings level="5%"  smoothingHighResolution="1"  contourHighResolution="1"  histogramSmoothingCount="0"  graphResolution="256"  showOutliers="0"  drawLargeDots="0"  dotsToDraw="8000"  tint="le.chartfill.tinted.40"  lineWeight="le.lineweight.normal"  lineStyle="le.linestyle.solid" />
+           <GraphEnvironment showGrid="0"  showAxes="tnlTNL"  showGates="1"  showFreqOnPlots="1"  showGateNameOnPlots="1"  showMedians="0"  showUncomped="0"  addEventParam="0"  lastYAxisName="" >
+             <TextTraits font="SansSerif"  size="11"  name="Labels"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+             <TextTraits font="SansSerif"  size="11"  name="LayoutGates"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+             <TextTraits font="SansSerif"  size="9"  name="Numbers"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+             <TextTraits font="SansSerif"  size="9"  name="Legend"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+           </GraphEnvironment>
+         </Graph>
+         <Subpopulations>
+           <CellCycle name="Cell Cycle"  annotation=""  owningGroup=""  expanded="1"  sortPriority="10" >
+             <Graph smoothing="13"  backColor="#ffffff"  foreColor="#000000"  type="Histogram"  fast="1" >
+               <Axis dimension="x"  name="FL7-A"  label=""  auto="auto" />
+               <Axis dimension="y"  name=""  label=""  auto="auto" />
+               <GraphSettings level="5%"  smoothingHighResolution="1"  contourHighResolution="1"  histogramSmoothingCount="0"  graphResolution="256"  showOutliers="0"  drawLargeDots="0"  dotsToDraw="8000"  tint="le.chartfill.tinted.40"  lineWeight="le.lineweight.normal"  lineStyle="le.linestyle.solid" />
+               <GraphEnvironment showGrid="0"  showAxes="tnlTNL"  showGates="1"  showFreqOnPlots="1"  showGateNameOnPlots="1"  showMedians="0"  showUncomped="0"  addEventParam="0"  lastYAxisName="" >
+                 <TextTraits font="SansSerif"  size="11"  name="Labels"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+                 <TextTraits font="SansSerif"  size="11"  name="LayoutGates"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+                 <TextTraits font="SansSerif"  size="9"  name="Numbers"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+                 <TextTraits font="SansSerif"  size="9"  name="Legend"  style="plain"  color="#000000"  background="#00ffffff"  just="left" />
+                 <WindowPosition x="0"  y="0"  width="0"  height="0"  displayed="0"  panelState="++" />
+               </GraphEnvironment>
+             </Graph>
+             <profile model="DeanJettFox"  parameter="FL7-A"  syncPeak="0"  autoGate="0"  gateG1="0"  gateG2="0"  gateS="0" >
+               <Constraints>
+                 <Peak id="1" >
+                   <Mean>
+                     <Range min="146.8110709988"  max="212.9963898917" />
+                   </Mean>
+                   <Cv/>
+                 </Peak>
+                 <Peak id="2" >
+                   <Mean>
+                     <Range min="300.8423586041"  max="398.3152827918" />
+                   </Mean>
+                   <Cv/>
+                 </Peak>
+               </Constraints>
+               <display>
+                 <sum enabled="1" />
+                 <components enabled="1"  fill="1" />
+               </display>
+             </profile>
+             <CellCycleResult model="DeanJettFox" >
+               <Phases>
+                 <Gaussian id="1"  mean="174.723"  amplitude="3298.76"  stddev="17.0186"  channelMean="174.723"  channelStddev="17.0186" />
+                 <Gaussian id="2"  mean="350.492"  amplitude="3611.12"  stddev="33.0807"  channelMean="350.492"  channelStddev="33.0807" />
+                 <SPhase id="DeanJettFox"  a="-1473.03"  b="23.3257"  c="-0.0552832" />
+               </Phases>
+               <Statistics>
+                 <Statistic name="RMSD"  value=" 90.3276" />
+                 <Statistic name="PercentG1"  value=" 21.6122" />
+                 <Statistic name="PercentS"  value=" 26.7373" />
+                 <Statistic name="PercentG2"  value=" 45.9876" />
+                 <Statistic name="G1Mean"  value="174.7234" />
+                 <Statistic name="G2Mean"  value="350.4921" />
+                 <Statistic name="G1CV"  value="  9.7403" />
+                 <Statistic name="G2CV"  value="  9.4383" />
+                 <Statistic name="percentSubG1"  value=" -0.4724" />
+                 <Statistic name="percentSuperG2"  value="  4.1562" />
+               </Statistics>
+             </CellCycleResult>
+           </CellCycle>
+         </Subpopulations>
+       </SampleNode>
+     </Sample>
+   </SampleList>
+   <TableEditor title="FlowJo Tables: watson_seed.wsp"  current="Table" >
+     <Table name="Table"  outputFile="file:/REDACTED-PATH/Table"  color="#00ffffff"  isBatch="0"  quickclose="0"  destination="toDisplay"  outputFormat="fj.document.type.table"  autoColumnName="" >
+       <PrintLayout flipPattern0="0"  rows="1"  columns="1"  padding="36"  header=""  footer=""  headerActive="0"  footerActive="0"  scalingMode="fj.print.scale.none"  scaling="1"  orientation="1"  width="612"  height="792"  imageableX="72"  imageableY="72"  imageableWidth="468"  imageableHeight="648" />
+       <PageSection sectionName="header" >&lt;table width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;left&quot; valign=&quot;top&quot;&gt;&amp;NBSP&amp;NBSP&amp;NBSP&amp;NBSP&lt;IMG SRC=&quot;file:/REDACTED-PATH/PageSection>
+       <PageSection sectionName="footer" >&lt;table width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;left&quot;  valign=&quot;bottom&quot;&gt;&lt;LongDate/&gt;&lt;/td&gt;&lt;td align=&quot;right&quot; valign=&quot;bottom&quot;&gt;&lt;Version/&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</PageSection>
+       <Iteration iterationType="SAMPLE"  iterationValue=""  iterationKeyword=""  discriminator=""  panelSize="1"  groupName="workspaceSelection" />
+     </Table>
+   </TableEditor>
+   <LayoutEditor title="FlowJo Layouts: watson_seed.wsp"  current="Layout"  showGrid="0"  showPageBreaks="0"  showGuides="0"  showDebugOutput="0" >
+     <Layout name="Layout"  outputFile="file:/REDACTED-PATH/Layout"  color="#00ffffff"  isBatch="0"  showGrid="0"  showRulers="1"  showDebugOutput="0"  showGuides="0"  showPageBreaks="1"  scale="1" >
+       <PrintLayout flipPattern0="0"  rows="1"  columns="1"  padding="36"  header=""  footer=""  headerActive="0"  footerActive="0"  scalingMode="fj.print.scale.none"  scaling="1"  orientation="1"  width="612"  height="792"  imageableX="72"  imageableY="72"  imageableWidth="468"  imageableHeight="648" />
+       <PageSection sectionName="header" >&lt;table width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;left&quot; valign=&quot;top&quot;&gt;&amp;NBSP&amp;NBSP&amp;NBSP&amp;NBSP&lt;IMG SRC=&quot;file:/REDACTED-PATH/PageSection>
+       <PageSection sectionName="footer" >&lt;table width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;left&quot;  valign=&quot;bottom&quot;&gt;&lt;LongDate/&gt;&lt;/td&gt;&lt;td align=&quot;right&quot; valign=&quot;bottom&quot;&gt;&lt;Version/&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</PageSection>
+       <Iteration iterationType="OFF"  iterationValue=""  iterationKeyword=""  discriminator=""  panelSize="1"  groupName="workspaceSelection" />
+       <BatchSettings useCurrentGroup="1"  length="3"  name=""  order="ACROSS"  direction="COLUMNS"  append="0"  destination="toLayout"  separatePages="0"  launchApp="1"  header="0"  footer="0"  commandLineBatch="0" />
+       <FigList/>
+     </Layout>
+     <WindowPosition x="0"  y="0"  width="900"  height="600" />
+   </LayoutEditor>
+   <Scripts>
+     <Script lang="text/javascript"  name="New Script    " />
+   </Scripts>
+   <Experiment>
+     <PlateModel name="Plate"  color="#00ffffff"  rows="8"  columns="12"  plateID="00000"  expID="000-00000"  format="Plate"  showNEntries="1"  peHeatmap="1"  peShowEnums="1"  peThickBorders="1" >
+       <PrintLayout flipPattern0="0"  rows="1"  columns="1"  padding="36"  header=""  footer=""  headerActive="0"  footerActive="0"  scalingMode="fj.print.scale.none"  scaling="1"  orientation="1"  width="612"  height="792"  imageableX="72"  imageableY="72"  imageableWidth="468"  imageableHeight="648" />
+     </PlateModel>
+     <PlateEditorState>
+       <KeywordList>
+         <Keyword attribute="Assay"  value="GFP Reporter" />
+         <Keyword attribute="Time point"  value="24hr" />
+         <Keyword attribute="Treatment &quot;Drug A&quot;"  value="10ug/L" />
+       </KeywordList>
+       <StagingArea>
+         <StagingWell/>
+         <StagingWell/>
+         <StagingWell/>
+         <StagingWell/>
+       </StagingArea>
+     </PlateEditorState>
+   </Experiment>
+   <Exports/>
+   <SOPS/>
+   <NA/>
+   <weights/>
+ </Workspace>

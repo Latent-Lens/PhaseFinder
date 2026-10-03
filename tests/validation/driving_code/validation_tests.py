@@ -808,9 +808,9 @@ def report_html(records, cloccs_series, started, port):
     failures = (sum(run["status"] == "ERROR" for record in records for run in record.get("runs", []))
                 + sum(record.get("result", {}).get("status") == "ERROR" for record in cloccs_series))
     file_count = len(records) + sum(len(record["files"]) for record in cloccs_series)
-    return f'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    return f'''<!doctype html><html><head><meta charset="utf-8">
 <title>PhaseFinder FCS validation</title><style>
-:root{{--logo_teal:#01a5af;--logo_blue:#072c67;--focus_success:rgba(5,150,105,.28)}}body{{font:15px/1.45 system-ui,sans-serif;color:#17212b;margin:2rem;background:#f7f9fb}}main{{max-width:1500px;margin:auto;background:white;padding:2rem;border-radius:12px}}h2{{margin-top:4rem;border-bottom:3px solid #294d69;padding-bottom:.4rem}}h3{{margin-top:2rem}}h4{{margin-top:0}}.summary{{background:#eef5fa;padding:1rem;border-radius:8px}}.table-wrap{{overflow:auto;max-height:75vh;border:1px solid #ccd7df}}.table-wrap.filtered{{max-height:none}}table{{border-collapse:collapse;font-size:12px}}th,td{{border:1px solid #ccd7df;padding:.35rem .5rem;text-align:right;white-space:nowrap}}#comparison-table td{{width:1%;background:white;color:#17212b}}#comparison-table .sample-group.synthetic,#comparison-table th.filename.synthetic{{background:var(--logo_teal);color:#071b1d}}#comparison-table .sample-group.external,#comparison-table th.filename.external{{background:var(--logo_blue);color:white}}#comparison-table .sample-group{{text-align:left}}#comparison-table td.expected-success{{background:var(--focus_success)}}#comparison-table .fixture-interpretation td{{white-space:normal;min-width:5.5rem;max-width:7rem;text-align:left;overflow-wrap:anywhere}}thead th{{position:sticky;top:0;background:#294d69;color:white;z-index:2}}thead select{{font:inherit;max-width:210px}}th.group{{text-align:left;background:#eaf0f4;position:sticky;left:0;z-index:1;white-space:normal;max-width:170px}}th.filename{{writing-mode:vertical-rl;max-height:220px}}.comparison{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}}.comparison section{{border:1px solid #ccd7df;padding:1rem;border-radius:8px;background:#fbfcfd}}dl{{display:grid;grid-template-columns:1fr auto;gap:.25rem 1rem}}dt,dd{{margin:0}}img{{max-width:100%;height:auto;border:1px solid #ccd7df}}figure{{margin:1rem 0}}figcaption{{color:#52616d}}hr{{border:0;border-top:2px solid #d7e0e6;margin:2.5rem 0}}.status{{font-size:.75em;padding:.15rem .4rem;border-radius:4px}}.pass,.converged{{background:#d8f3df}}.error{{background:#ffe2e2;color:#842029;padding:.5rem}}p.error{{background:#ffe2e2}}.note{{color:#52616d}}.file-results{{margin-top:4rem}}.file-results>summary{{cursor:pointer}}.file-results>summary h2{{display:inline-block;margin:0;width:calc(100% - 2rem)}}.fixture-run-interpretation{{background:#eef5fa;border-left:4px solid var(--logo_teal);padding:.65rem .8rem}}@media(max-width:800px){{.comparison{{grid-template-columns:1fr}}}}
+:root{{--logo_teal:#01a5af;--logo_blue:#072c67;--focus_success:rgba(5,150,105,.28)}}body{{font:15px/1.45 system-ui,sans-serif;color:#17212b;margin:2rem;background:#f7f9fb}}main{{max-width:1500px;margin:auto;background:white;padding:2rem;border-radius:12px}}h2{{margin-top:4rem;border-bottom:3px solid #294d69;padding-bottom:.4rem}}h3{{margin-top:2rem}}h4{{margin-top:0}}.summary{{background:#eef5fa;padding:1rem;border-radius:8px}}.table-wrap{{overflow:auto;max-height:75vh;border:1px solid #ccd7df}}.table-wrap.filtered{{max-height:none}}table{{border-collapse:collapse;font-size:12px}}th,td{{border:1px solid #ccd7df;padding:.35rem .5rem;text-align:right;white-space:nowrap}}#comparison-table td{{width:1%;background:white;color:#17212b}}#comparison-table .sample-group.synthetic,#comparison-table th.filename.synthetic{{background:var(--logo_teal);color:#071b1d}}#comparison-table .sample-group.external,#comparison-table th.filename.external{{background:var(--logo_blue);color:white}}#comparison-table .sample-group{{text-align:left}}#comparison-table td.expected-success{{background:var(--focus_success)}}#comparison-table .fixture-interpretation td{{white-space:normal;min-width:5.5rem;max-width:7rem;text-align:left;overflow-wrap:anywhere}}thead th{{position:sticky;top:0;background:#294d69;color:white;z-index:2}}thead select{{font:inherit;max-width:210px}}th.group{{text-align:left;background:#eaf0f4;position:sticky;left:0;z-index:1;white-space:normal;max-width:170px}}th.filename{{writing-mode:vertical-rl;max-height:220px}}.comparison{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}}.comparison section{{border:1px solid #ccd7df;padding:1rem;border-radius:8px;background:#fbfcfd}}dl{{display:grid;grid-template-columns:1fr auto;gap:.25rem 1rem}}dt,dd{{margin:0}}img{{max-width:100%;height:auto;border:1px solid #ccd7df}}figure{{margin:1rem 0}}figcaption{{color:#52616d}}hr{{border:0;border-top:2px solid #d7e0e6;margin:2.5rem 0}}.status{{font-size:.75em;padding:.15rem .4rem;border-radius:4px}}.pass,.converged{{background:#d8f3df}}.error{{background:#ffe2e2;color:#842029;padding:.5rem}}p.error{{background:#ffe2e2}}.note{{color:#52616d}}.file-results{{margin-top:4rem}}.file-results>summary{{cursor:pointer}}.file-results>summary h2{{display:inline-block;margin:0;width:calc(100% - 2rem)}}.fixture-run-interpretation{{background:#eef5fa;border-left:4px solid var(--logo_teal);padding:.65rem .8rem}}
 </style></head><body><main><h1>PhaseFinder synthetic and external FCS validation</h1>
 <div class="summary"><p>Started {esc(started)}; local app server port {port}. Files: {file_count}. Recorded errors: {failures}.</p><p>Each ordinary run reset the session, reloaded one FCS, plotted its DNA channel, and independently detected peaks. Model runs then fit the selected model. QC runs applied the stated pre-filter(s) before peak detection and Dean–Jett–Fox fitting. CLOCCS validation jointly fits all 16 timepoints in each replicate. “pp” is percentage points; the parenthesized differential is pp ÷ 100, as requested.</p></div>
 {f'<h2>Cross-file comparison</h2>{top_table(records)}' if records else ''}{cloccs_report_html(cloccs_series)}{''.join(sections)}</main><script>
@@ -872,18 +872,41 @@ FLOWJO_TIME_METHOD = "robust-summary"
 # Time-QC methods). Every configuration is fit and compared to the reference, so
 # we can see which gating PhaseFinder needs to best match FlowJo/Flowreader.
 FLOWJO_QC_MATRIX = (
-    ("No QC", (), None),
-    ("Structural", ("qc_structural",), None),
-    ("Time QC — robust-summary", ("qc_time",), "robust-summary"),
-    ("Time QC — peak-tracking", ("qc_time",), "peak-tracking"),
-    ("Cell Gate", ("qc_cellgate",), None),
-    ("Singlet", ("qc_singlet",), None),
-    ("All QC — robust-summary", ("qc_structural", "qc_time", "qc_cellgate", "qc_singlet"), "robust-summary"),
-    ("All QC — peak-tracking", ("qc_structural", "qc_time", "qc_cellgate", "qc_singlet"), "peak-tracking"),
+    ("No QC (diagnostic)", (), None, "diagnostic"),
+    ("Structural (diagnostic)", ("qc_structural",), None, "diagnostic"),
+    ("Time QC — robust-summary (diagnostic)", ("qc_time",), "robust-summary", "diagnostic"),
+    ("Time QC — peak-tracking (diagnostic)", ("qc_time",), "peak-tracking", "diagnostic"),
+    ("Cell Gate (diagnostic)", ("qc_cellgate",), None, "diagnostic"),
+    ("Singlet (diagnostic)", ("qc_singlet",), None, "diagnostic"),
+    ("All QC — robust-summary (diagnostic)", ("qc_structural", "qc_time", "qc_cellgate", "qc_singlet"), "robust-summary", "diagnostic"),
+    ("All QC — peak-tracking (diagnostic)", ("qc_structural", "qc_time", "qc_cellgate", "qc_singlet"), "peak-tracking", "diagnostic"),
+    ("Product default (structural required)", ("qc_structural",), None, "product"),
+    ("FlowJo seed mean windows (No QC)", (), None, "matched"),
 )
 
+# Exact mean windows in djf_seed.wsp (1468f). Other samples' workspace windows
+# are unrecorded, so this comparison is explicitly seed-derived, not a claim
+# that their original FlowJo constraints were identical.
+FLOWJO_SEED_MEAN_REGIONS = {
+    "g1": {"left": 146.8110709988, "right": 212.9963898917},
+    "g2": {"left": 300.8423586041, "right": 398.3152827918},
+}
 
-def apply_qc_flowjo(page, qc_ids, time_method):
+
+def flowjo_event_counts(page, sample_name):
+    return page.evaluate("""async name => {
+      const { plottable_rows } = await import('/js/plotting/data.js');
+      const row = plottable_rows().find((item) => item.name === name);
+      if (!row?.data) throw new Error(`Missing event data for ${name}`);
+      const mask = row.data.masks?.final;
+      let retained = 0;
+      if (mask) for (const value of mask) retained += value;
+      return { in: row.data.eventCount,
+        retained: mask ? retained : row.data.eventCount };
+    }""", sample_name)
+
+
+def apply_qc_flowjo(page, qc_ids, time_method, sample_name=None, out=None):
     # Robust variant of apply_qc() for the heavy real FCS: waits for any overlay
     # to clear BEFORE each click (companion-channel loading of 460k-event files
     # leaves a full-viewport progress overlay that intercepts pointer events) and
@@ -891,6 +914,9 @@ def apply_qc_flowjo(page, qc_ids, time_method):
     # dismisses the scatter inspector, which a review-required Cell Gate (QC-05)
     # can open. Longer timeouts than apply_qc() for the same reason.
     for qc_id in qc_ids:
+        if out is not None:
+            out["stage"] = f"qc:{qc_id}"
+        started = time.perf_counter()
         wait_for_overlay_hidden(page, timeout_ms=120000)
         page.eval_on_selector(f"#{qc_id}", "el => el.click()")
         if qc_id == "qc_structural":
@@ -904,6 +930,12 @@ def apply_qc_flowjo(page, qc_ids, time_method):
         if page.locator("#djf_scatter_modal").is_visible():
             page.eval_on_selector("#djf_scatter_modal_close", "el => el.click()")
             page.wait_for_selector("#djf_scatter_modal", state="hidden", timeout=15000)
+        if out is not None:
+            counts = flowjo_event_counts(page, sample_name)
+            out["eventsByStep"].append({"step": qc_id,
+                                        "in": out["eventsByStep"][-1]["retained"],
+                                        "retained": counts["retained"],
+                                        "seconds": round(time.perf_counter() - started, 3)})
 
 
 def detect_peaks_flowjo(page, sample_name):
@@ -938,8 +970,8 @@ def fit_model_flowjo(page, sample_name, model_id):
     # A fit that PhaseFinder judges not-valid-for-reporting (e.g. a boundary-
     # degenerate peak, contract fix #2) becomes a DIAGNOSTIC PREVIEW with
     # activeResultKey=null, so we wait for ANY new result key (active or
-    # diagnostic) and read it, recording validForReporting/limitedReliability
-    # rather than treating an unauthoritative fit as authoritative.
+    # diagnostic). A preflight refusal produces no key: observe its visible
+    # error too, instead of misreporting it as a 180-second optimizer timeout.
     page.select_option("#cell_cycle_model_select", model_id)
     page.wait_for_function("() => !document.querySelector('#cell_cycle_fit_current_button').disabled", timeout=15000)
     old_keys = page.evaluate(
@@ -951,59 +983,133 @@ def fit_model_flowjo(page, sample_name, model_id):
         page.eval_on_selector("#cell_cycle_fit_current_button", "el => el.click()")
         page.wait_for_function(
             "([name, oldKeys]) => { const m=window.PhaseFinder.pipeline.get_state(name)?.modeling; "
-            "return Boolean(m && Object.keys(m.resultsByKey).some((k) => !oldKeys.includes(k))); }",
+            "const failed=document.querySelector('#cell_cycle_fit_status')?.classList.contains('cell_cycle_fit_not_converged') "
+            "&& !document.querySelector('#cell_cycle_fit_current_button')?.disabled; "
+            "return failed || Boolean(m && Object.keys(m.resultsByKey).some((k) => !oldKeys.includes(k))); }",
             arg=[sample_name, old_keys], timeout=180000)
     finally:
         page.remove_listener("dialog", accept)
-    return page.evaluate(
+    fit = page.evaluate(
         "([name, oldKeys]) => { const m=window.PhaseFinder.pipeline.get_state(name).modeling; "
         "const k = Object.keys(m.resultsByKey).find((x) => !oldKeys.includes(x)); return m.resultsByKey[k]; }",
         [sample_name, old_keys])
+    if fit is None:
+        reason = page.locator("#cell_cycle_fit_status").inner_text()
+        raise RuntimeError(f"Fit refused before optimization: {reason}")
+    return fit
 
 
-def run_flowjo_sample(page, record, qc_ids=FLOWJO_QC_IDS, time_method=FLOWJO_TIME_METHOD):
-    out = {"strain": record["strain"], "status": "ERROR", "error": "", "models": {}}
+def run_flowjo_sample(page, record, qc_ids=FLOWJO_QC_IDS, time_method=FLOWJO_TIME_METHOD,
+                      probe_cv_cap=False, probe_left_foot=False, mode="diagnostic"):
+    out = {"strain": record["strain"], "status": "ERROR", "error": "", "stage": "load",
+           "mode": mode, "models": {}, "eventsByStep": []}
     if not record["path"].is_file():
         out["error"] = "local-only FCS absent"
         out["status"] = "SKIPPED"
         return out
     try:
         sample_name, channel, bins = load_and_plot(page, record)
+        out["eventsByStep"].append({"step": "loaded", **flowjo_event_counts(page, sample_name)})
         if qc_ids:
             # Run the full pre-model QC gating, then re-take the recommended bins
             # since gating changes the retained-event histogram.
-            apply_qc_flowjo(page, qc_ids, time_method)
+            apply_qc_flowjo(page, qc_ids, time_method, sample_name, out)
             bins = use_recommended_bins(page)
+        out["stage"] = "peak_detection"
         regions = detect_peaks_flowjo(page, sample_name)
-        # The validation deliberately fits and compares on the gated population
-        # under each QC config, regardless of whether PhaseFinder deems the QC
-        # QUALITY sufficient to report. The gates for this config are already
-        # applied (their masks are installed), so clearing the required-QC set only
-        # removes the quality-based fit *block* -- which otherwise refuses:
+        if mode == "matched":
+            page.evaluate("""async ([name, regions]) => {
+              const { plottable_rows } = await import('/js/plotting/data.js');
+              const { update_peak_regions } = await import('/js/analysis/cell_cycle/modeling_state.js');
+              const row = plottable_rows().find((item) => item.name === name);
+              update_peak_regions(row, regions, { source: 'manual' });
+            }""", [sample_name, FLOWJO_SEED_MEAN_REGIONS])
+            regions = FLOWJO_SEED_MEAN_REGIONS
+        out["peakDetection"] = page.evaluate("""name => {
+          const m = window.PhaseFinder.pipeline.get_state(name).modeling;
+          return { status: m.peakDetection?.status ?? null,
+            source: m.peakSelection?.source ?? null,
+            confidence: m.peakSelection?.confidence ?? null };
+        }""", sample_name)
+        # Diagnostic runs compare the gated population regardless of whether
+        # PhaseFinder deems its QC sufficient to report. Clearing required-QC
+        # only in those runs removes the quality-based fit block, which refuses:
         #   * the No-QC config (preflight defaults to requiring structural QC), and
         #   * any degraded-gate config (e.g. peak-tracking Time QC flags limited
         #     reliability, which approve_degraded_qc does not prompt to waive, so
         #     the preflight throws and no result is produced).
-        # The fit's own validForReporting/limitedReliability still reflects FIT
-        # quality, and the applied QC config is recorded in the report.
-        page.evaluate(
-            "name => { const s = window.PhaseFinder.pipeline.get_state(name); if (s) s.requiredQc = []; }",
-            sample_name)
+        # The product row keeps required QC; all rows record fit qualification.
+        if mode != "product":
+            page.evaluate(
+                "name => { const s = window.PhaseFinder.pipeline.get_state(name); if (s) s.requiredQc = []; }",
+                sample_name)
         out.update({"channel": channel, "bins": bins, "regions": regions,
-                    "qc_applied": list(qc_ids), "time_method": time_method if qc_ids else None})
+                    "qc_applied": list(qc_ids), "time_method": time_method if qc_ids else None,
+                    "eventsIn": out["eventsByStep"][0]["in"],
+                    "eventsRetained": out["eventsByStep"][-1]["retained"]})
         model_ids = ["dean_jett_fox"]
         if record["references"].get("flowreader_watson"):
-            model_ids.append("watson_classic")
+            model_ids.extend(("watson_classic", "watson_pragmatic"))
         for model_id in model_ids:
-            fit = fit_model_flowjo(page, sample_name, model_id)
+            out["stage"] = f"fit:{model_id}"
+            started = time.perf_counter()
+            try:
+                fit = fit_model_flowjo(page, sample_name, model_id)
+            finally:
+                out.setdefault("fitSeconds", {})[model_id] = round(time.perf_counter() - started, 3)
             out["models"][model_id] = {
                 "phaseFractions": fit.get("phaseFractions"),
                 "parameters": fit.get("parameters"),
+                "appliedConfiguration": fit.get("appliedConfiguration"),
+                "bounds": fit.get("bounds"),
+                "convergenceReason": fit.get("convergenceReason"),
+                "fitAudit": {key: (fit.get("diagnostics") or {}).get(key)
+                             for key in ("bestStartIndex", "restarts", "deviance", "reducedDeviance")},
+                "warnings": fit.get("warnings"),
+                "boundFlags": [{"parameter": w.get("parameter"), "side": w.get("code")}
+                               for w in fit.get("warnings", [])
+                               if w.get("code") in ("parameter_at_lower_bound", "parameter_at_upper_bound")],
                 "converged": fit.get("converged"),
                 "validForReporting": fit.get("validForReporting"),
                 "limitedReliability": fit.get("limitedReliability"),
             }
+        if probe_cv_cap and "watson_classic" in out["models"]:
+            djf = out["models"]["dean_jett_fox"]["parameters"]
+            cap = 1.5 * max(djf["g1CV"], djf["g2CV"])
+            out["models"]["watson_cv_cap_probe"] = page.evaluate("""async ([name, cap]) => {
+              const { watson_classic } = await import('/js/analysis/cell_cycle/models/watson_classic.js');
+              const state = window.PhaseFinder.pipeline.get_state(name);
+              const fit = watson_classic.normalizeResult(watson_classic.fit({
+                histogram: state.histogram, peakRegions: state.modeling.peakSelection.regions,
+                config: { cvMax: cap },
+              }));
+              return { cap, phaseFractions: fit.phaseFractions, parameters: fit.parameters,
+                converged: fit.converged, convergenceReason: fit.convergenceReason,
+                deviance: fit.diagnostics.deviance };
+            }""", [sample_name, cap])
+        if probe_left_foot:
+            ref = record["references"]["flowjo_djf"]
+            cut = ref["g1_mean"] * (1 - 2.5 * ref["g1_cv_percent"] / 100)
+            config = out["models"]["dean_jett_fox"]["appliedConfiguration"]
+            out["models"]["djf_left_foot_probe"] = page.evaluate("""async ([name, cut, config]) => {
+              const { dean_jett_fox } = await import('/js/analysis/cell_cycle/models/dean_jett_fox.js');
+              const state = window.PhaseFinder.pipeline.get_state(name);
+              const original = state.histogram;
+              const first = Math.max(0, original.edges.findIndex((edge) => edge >= cut));
+              const edges = original.edges.slice(first);
+              const counts = Array.from(original.counts ?? original.y).slice(first);
+              const regions = structuredClone(state.modeling.peakSelection.regions);
+              regions.g1.left = Math.max(regions.g1.left, edges[0]);
+              const fit = dean_jett_fox.normalizeResult(dean_jett_fox.fit({
+                histogram: { edges, counts }, peakRegions: regions, config,
+              }));
+              return { cut, firstEdge: edges[0], excludedBins: first,
+                excludedCount: Array.from(original.counts ?? original.y).slice(0, first).reduce((a, b) => a + b, 0),
+                phaseFractions: fit.phaseFractions, parameters: fit.parameters,
+                converged: fit.converged, convergenceReason: fit.convergenceReason };
+            }""", [sample_name, cut, config])
         out["status"] = "PASS"
+        out["stage"] = "complete"
     except Exception as error:
         out["error"] = str(error)
     return out
@@ -1017,11 +1123,17 @@ def score_djf(fitted, ref, tol):
     frac = fitted["phaseFractions"] or {}
     params = fitted["parameters"] or {}
     pp = tol["phase_fraction_abs_pp"]
-    phases = {}
-    for phase in ("g1", "s", "g2"):
-        delta_pp = (frac.get(phase, float("nan")) - ref[f"{phase}_fraction"]) * 100
-        phases[phase] = {"ours": frac.get(phase), "ref": ref[f"{phase}_fraction"],
-                         "delta_pp": delta_pp, "pass": abs(delta_pp) <= pp[phase]}
+    def phase_scores(reference):
+        phases = {}
+        for phase in ("g1", "s", "g2"):
+            delta_pp = (frac.get(phase, float("nan")) - reference[phase]) * 100
+            phases[phase] = {"ours": frac.get(phase), "ref": reference[phase],
+                             "delta_pp": delta_pp, "pass": abs(delta_pp) <= pp[phase]}
+        return phases
+    raw_ref = {phase: ref[f"{phase}_fraction"] for phase in ("g1", "s", "g2")}
+    total = sum(raw_ref.values())
+    phases = phase_scores(raw_ref)
+    rescaled_phases = phase_scores({phase: value / total for phase, value in raw_ref.items()})
     g1_mean_rel = _rel(params.get("g1Mean", float("nan")), ref["g1_mean"])
     g2_mean_rel = _rel(params.get("g2Mean", float("nan")), ref["g2_mean"])
     ratio = params.get("g2Mean", float("nan")) / params.get("g1Mean", float("nan")) if params.get("g1Mean") else float("nan")
@@ -1031,11 +1143,18 @@ def score_djf(fitted, ref, tol):
         "g2_mean": {"ours": params.get("g2Mean"), "ref": ref["g2_mean"], "rel": g2_mean_rel, "pass": g2_mean_rel <= tol["peak_mean_rel"]},
         "g2_g1_ratio": {"ours": ratio, "ref": ref["g2_g1_ratio"], "delta": ratio_delta, "pass": ratio_delta <= tol["g2_g1_ratio_abs"]},
     }
-    all_pass = all(p["pass"] for p in phases.values()) and all(c["pass"] for c in checks.values())
-    return {"model": "dean_jett_fox", "converged": fitted.get("converged"), "phases": phases, "checks": checks, "all_pass": all_pass}
+    phase_pass = all(p["pass"] for p in phases.values())
+    rescaled_phase_pass = all(p["pass"] for p in rescaled_phases.values())
+    all_pass = phase_pass and all(c["pass"] for c in checks.values())
+    rescaled_pass = rescaled_phase_pass and all(c["pass"] for c in checks.values())
+    return {"model": "dean_jett_fox", "converged": fitted.get("converged"),
+            "phases": phases, "checks": checks, "all_pass": all_pass,
+            "passFailBasis": "raw", "phaseAllPass": phase_pass,
+            "rescaledPhases": rescaled_phases, "rescaledPhaseAllPass": rescaled_phase_pass,
+            "rescaledAllPass": rescaled_pass, "referenceFractionTotal": total}
 
 
-def score_watson(fitted, ref, tol):
+def score_watson(fitted, ref, tol, model_id="watson_classic"):
     frac = fitted["phaseFractions"] or {}
     pp = tol["phase_fraction_abs_pp"]
     phases = {}
@@ -1043,17 +1162,19 @@ def score_watson(fitted, ref, tol):
         delta_pp = (frac.get(phase, float("nan")) - ref[f"{phase}_fraction"]) * 100
         phases[phase] = {"ours": frac.get(phase), "ref": ref[f"{phase}_fraction"],
                          "delta_pp": delta_pp, "pass": abs(delta_pp) <= pp[phase]}
-    # Directional expectation: PhaseFinder Watson Pragmatic-style S restriction
-    # means our %S should sit at or below Flowreader's classic Watson %S.
-    directional_ok = (frac.get("s", float("inf")) <= ref["s_fraction"] + 1e-6)
     all_pass = all(p["pass"] for p in phases.values())
-    return {"model": "watson_classic", "converged": fitted.get("converged"), "phases": phases,
-            "directional_s_ok": directional_ok, "all_pass": all_pass}
+    return {"model": model_id, "converged": fitted.get("converged"), "phases": phases,
+            "all_pass": all_pass}
 
 
 def score_run(run, record, tol):
-    scored = {"status": run["status"], "error": run["error"],
+    scored = {"status": run["status"], "error": run["error"], "fitAudit": run["models"],
               "qc_applied": run.get("qc_applied"), "time_method": run.get("time_method"),
+              "mode": run.get("mode"), "stage": run.get("stage"),
+              "eventsByStep": run.get("eventsByStep"), "eventsIn": run.get("eventsIn"),
+              "eventsRetained": run.get("eventsRetained"),
+              "fitSeconds": run.get("fitSeconds"),
+              "peakDetection": run.get("peakDetection"), "regions": run.get("regions"),
               "converged": {}, "scores": {}}
     if run["status"] != "PASS":
         return scored
@@ -1064,17 +1185,19 @@ def score_run(run, record, tol):
         s["limitedReliability"] = djf.get("limitedReliability")
         scored["scores"]["dean_jett_fox"] = s
         scored["converged"]["dean_jett_fox"] = djf.get("converged")
-    watson = run["models"].get("watson_classic")
-    if watson and record["references"].get("flowreader_watson"):
-        s = score_watson(watson, record["references"]["flowreader_watson"], tol["flowreader_watson"])
-        s["validForReporting"] = watson.get("validForReporting")
-        s["limitedReliability"] = watson.get("limitedReliability")
-        scored["scores"]["watson_classic"] = s
-        scored["converged"]["watson_classic"] = watson.get("converged")
+    for model_id in ("watson_classic", "watson_pragmatic"):
+        watson = run["models"].get(model_id)
+        if watson and record["references"].get("flowreader_watson"):
+            s = score_watson(watson, record["references"]["flowreader_watson"], tol["flowreader_watson"], model_id)
+            s["validForReporting"] = watson.get("validForReporting")
+            s["limitedReliability"] = watson.get("limitedReliability")
+            scored["scores"][model_id] = s
+            scored["converged"][model_id] = watson.get("converged")
     return scored
 
 
-def execute_flowjo_watson(page, bundle, limit=None, qc_matrix=FLOWJO_QC_MATRIX):
+def execute_flowjo_watson(page, bundle, limit=None, qc_matrix=FLOWJO_QC_MATRIX,
+                          probe_cv_cap=False, probe_left_foot=False):
     records = bundle["records"]
     if limit is not None:
         records = records[:limit]
@@ -1082,9 +1205,9 @@ def execute_flowjo_watson(page, bundle, limit=None, qc_matrix=FLOWJO_QC_MATRIX):
     results = []
     for index, record in enumerate(records, 1):
         sample = {"strain": record["strain"], "configs": []}
-        for label, qc_ids, time_method in qc_matrix:
+        for label, qc_ids, time_method, mode in qc_matrix:
             print(f'[{index}/{len(records)}] {record["strain"]} — {label}', flush=True)
-            run = run_flowjo_sample(page, record, qc_ids, time_method)
+            run = run_flowjo_sample(page, record, qc_ids, time_method, probe_cv_cap, probe_left_foot, mode)
             scored = score_run(run, record, tol)
             scored["label"] = label
             sample["configs"].append(scored)
@@ -1111,30 +1234,45 @@ def write_flowjo_watson_report(results, started):
                  "with both methods; up to all four gates with both Time-QC methods) and every fit is "
                  "compared to the reference, so we can see which gating best reproduces FlowJo/Flowreader.")
     lines.append("")
+    lines.append("**G2:G1 ratio is a documented convention difference, not a plain accuracy check.** "
+                 "FlowJo's platform can constrain the fitted G2:G1 mean-peak ratio toward 2.0; PhaseFinder "
+                 "fits it freely and reproduces a real sub-2.0 biological effect (chromatin condensation "
+                 "restricts intercalating-dye access in G2/M). A `g2_g1_ratio` row that fails the ±0.06 "
+                 "tolerance below is expected disagreement with FlowJo's convention, not evidence of a "
+                 "PhaseFinder defect -- see `docs/scientific-result-contract.md`, \"G2:G1 mean ratio -- do "
+                 "not tune toward the FlowJo reference (MODEL-01)\", before treating it as one.")
+    lines.append("")
 
     # ---- per-QC-config summary: which gating matches best ----
-    config_labels = [label for label, _, _ in FLOWJO_QC_MATRIX]
+    config_labels = [config["label"] for config in results[0]["configs"]] if results else []
     lines.append("## Within-tolerance pass rate by QC configuration")
     lines.append("")
-    lines.append("| QC config | DJF vs FlowJo | Watson vs Flowreader |")
-    lines.append("|---|---|---|")
+    lines.append("DJF pass/fail uses FlowJo's raw fractions; rescaled-to-100% scoring is diagnostic pending VALID-03's denominator decision. All other QC rows clear the product's required-QC preflight for diagnostic comparison; only the Product default row keeps it. The FlowJo seed mean windows are exact for 1468f only; no per-sample windows are recorded for the other 29 samples.")
+    lines.append("")
+    lines.append("| QC config | DJF raw phases | DJF rescaled phases | DJF raw full | DJF rescaled full | Watson Classic vs Flowreader | Watson Pragmatic vs Flowreader |")
+    lines.append("|---|---|---|---|---|---|---|")
     for label in config_labels:
         def rate(model_id):
             cs = [c for (_s, lab, c) in cells(model_id) if lab == label]
             passed = sum(1 for c in cs if c["all_pass"])
             return f"{passed}/{len(cs)}" if cs else "—"
-        lines.append(f"| {label} | {rate('dean_jett_fox')} | {rate('watson_classic')} |")
+        djf_rescaled = [c for (_s, lab, c) in cells("dean_jett_fox") if lab == label]
+        def djf_rate(field):
+            return f'{sum(1 for c in djf_rescaled if c[field])}/{len(djf_rescaled)}' if djf_rescaled else "—"
+        lines.append(f"| {label} | {djf_rate('phaseAllPass')} | {djf_rate('rescaledPhaseAllPass')} "
+                     f"| {rate('dean_jett_fox')} | {djf_rate('rescaledAllPass')} "
+                     f"| {rate('watson_classic')} | {rate('watson_pragmatic')} |")
     lines.append("")
 
     # ---- full per-sample x per-config x per-model table ----
     lines.append("## Per-sample detail")
     lines.append("")
-    lines.append("| strain | QC config | model | %G1 ours/ref (Δpp) | %S ours/ref (Δpp) | %G2 ours/ref (Δpp) | tol | reliability |")
-    lines.append("|---|---|---|---|---|---|---|---|")
+    lines.append("| strain | QC config | model | %G1 ours/ref (Δpp) | %S ours/ref (Δpp) | %G2 ours/ref (Δpp) | raw tol | rescaled tol | reliability |")
+    lines.append("|---|---|---|---|---|---|---|---|---|")
     for sample in results:
         for cfg in sample["configs"]:
             if cfg["status"] != "PASS":
-                lines.append(f'| {sample["strain"]} | {cfg["label"]} | — | {cfg["status"]}: {cfg["error"]} | | | | |')
+                lines.append(f'| {sample["strain"]} | {cfg["label"]} | — | {cfg["status"]} at {cfg["stage"]}: {cfg["error"]} | | | | | |')
                 continue
             for model_id, score in cfg["scores"].items():
                 ph = score["phases"]
@@ -1145,8 +1283,9 @@ def write_flowjo_watson_report(results, started):
                 reliability = ("limited-reliability" if score.get("limitedReliability")
                                else "authoritative" if score.get("validForReporting")
                                else "not-reportable")
+                rescaled = ("PASS" if score.get("rescaledAllPass") else "review") if model_id == "dean_jett_fox" else "—"
                 lines.append(f'| {sample["strain"]} | {cfg["label"]} | {model_id} | {cell("g1")} | {cell("s")} '
-                             f'| {cell("g2")} | {"PASS" if score["all_pass"] else "review"} | {reliability} |')
+                             f'| {cell("g2")} | {"PASS" if score["all_pass"] else "review"} | {rescaled} | {reliability} |')
     report_path = out_dir / f"comparison_{stamp}.md"
     report_path.write_text("\n".join(lines) + "\n")
 
@@ -1172,6 +1311,8 @@ def parse_args():
     parser.add_argument("--flowjo-no-qc", action="store_true",
                         help="Fit the FlowJo/Watson comparison under the No-QC configuration only, instead "
                              "of the full pre-model QC matrix (default)")
+    parser.add_argument("--probe-watson-cv-cap", action="store_true")
+    parser.add_argument("--probe-djf-left-foot", action="store_true")
     parser.add_argument("--flowjo-only", action="store_true",
                         help="Run ONLY the FlowJo DJF / Flowreader Watson comparison (skip synthetic/external/CLOCCS)")
     parser.add_argument("--headed", action="store_true")
@@ -1217,6 +1358,10 @@ def main():
             n in (r["id"] + " " + " ".join(item["path"].name for item in r["files"])).casefold()
             for n in needles
         )]
+        if flowjo_bundle:
+            flowjo_bundle["records"] = [r for r in flowjo_bundle["records"]
+                                         if any(n in r["strain"].casefold() for n in needles)]
+            flowjo_will_run = bool(flowjo_bundle["records"])
     if args.max_files is not None:
         records = records[:args.max_files]
         cloccs_series = cloccs_series[:max(0, args.max_files - len(records))]
@@ -1270,8 +1415,10 @@ def main():
             # runs when the (gitignored) reference JSON and FCS are present.
             flowjo_results = None
             if flowjo_will_run:
-                qc_matrix = (("No QC", (), None),) if args.flowjo_no_qc else FLOWJO_QC_MATRIX
-                flowjo_results = execute_flowjo_watson(page, flowjo_bundle, args.flowjo_limit, qc_matrix)
+                qc_matrix = (FLOWJO_QC_MATRIX[0],) if args.flowjo_no_qc else FLOWJO_QC_MATRIX
+                flowjo_results = execute_flowjo_watson(
+                    page, flowjo_bundle, args.flowjo_limit, qc_matrix,
+                    args.probe_watson_cv_cap, args.probe_djf_left_foot)
             elif not args.skip_flowjo and flowjo_bundle is None:
                 print("FlowJo/Watson comparison skipped: local reference JSON absent "
                       "(regenerate with generate_flowjo_djf_reference.py).", flush=True)
