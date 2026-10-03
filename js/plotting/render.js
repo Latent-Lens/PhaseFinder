@@ -69,11 +69,16 @@ import {
   DJF_FILL_OPACITY,
   DJF_COMPONENT_LINE_WIDTH,
   DJF_TOTAL_LINE_WIDTH,
+  refresh_plot_theme_colors,
+  plot_escape_html,
 } from "./data.js";
 import { update_plot_title, render_fit_results_table } from "./modeling.js";
 import { show_curve_tooltip, hide_curve_tooltip } from "./curve_tooltip.js";
 import { render_peak_region_overlay } from "./peak_region_overlay.js";
 import { install_plot_interactions, set_plot_renderer } from "./plot_viewport.js";
+import { active_peak_review_row } from "../analysis/cell_cycle/peak_review_ui.js";
+import { assign_lone_peak_identity } from "../analysis/cell_cycle/modeling_state.js";
+import { get_state } from "../analysis/pipeline/pipeline_state.js";
 import {
   SAMPLE_LINE_STYLES,
   plot_performance,
@@ -90,11 +95,11 @@ import {
 } from "./histogram_prep.js";
 import {
   analysis_text,
-  make_plot_accessible,
   render_plot_accessibility_summary,
   render_plot_clipping_warning,
 } from "./plot_accessibility.js";
 import { render_ridge_plot, remove_ridge_review_bar, render_ridge_review_header } from "./ridge_review.js";
+import { render_residual_panel } from "./residual_panel.js";
 
 // Re-exported at their original render.js path -- see the AUDIT-008 note
 // above. Each is imported normally above (not `export { x } from "..."`)
@@ -140,10 +145,12 @@ Output:
 */
 export function render_density_plot() {
   if (!plot_area || !plot_channels) return;
+  refresh_plot_theme_colors();
 
   // The manual-review bar lives above the plot (outside #plot_area); clear it on
   // every render so it only appears while a sample is blown up for review.
   remove_ridge_review_bar();
+  plot_area.parentElement?.querySelectorAll(":scope > .single_peak_alert").forEach((el) => el.remove());
   plot_area.parentElement?.querySelector(":scope > .plot_accessibility_summary")?.remove();
 
   // Ridge view: stacked per-sample small-multiples for multi-sample review.
@@ -472,6 +479,45 @@ export function render_density_plot() {
     console.error("Peak region overlay failed to render:", error);
   }
 
+  try {
+    const reviewRow = active_peak_review_row();
+    const reviewState = reviewRow ? get_state(reviewRow.name) : null;
+    const isLoneUnassigned = reviewState?.modeling?.peakDetection?.status === "single_peak_unassigned"
+      && !reviewState?.modeling?.peakSelection?.userAssignedIdentity;
+    if (isLoneUnassigned && plot_area.parentElement) {
+      const alert = document.createElement("div");
+      alert.className = "single_peak_alert alert alert-warning";
+      alert.setAttribute("role", "alert");
+      alert.innerHTML = `
+        <div class="single_peak_alert_content">
+          <span class="single_peak_alert_icon">⚠️</span>
+          <div class="single_peak_alert_message">
+            <strong>Single resolvable peak detected (${plot_escape_html(reviewRow.name)})</strong>:
+            Only one peak was found; its identity cannot be told from the histogram alone.
+            Please assign whether this peak is G1 or G2 to proceed with fitting.
+          </div>
+          <div class="single_peak_alert_actions">
+            <button type="button" class="btn_assign_lone_peak btn_assign_g1">Assign as G1</button>
+            <button type="button" class="btn_assign_lone_peak btn_assign_g2">Assign as G2</button>
+          </div>
+        </div>
+      `;
+      alert.querySelector(".btn_assign_g1")?.addEventListener("click", () => {
+        assign_lone_peak_identity(reviewRow, "g1");
+        render_density_plot();
+        document.dispatchEvent(new CustomEvent("cell-cycle-regions-changed"));
+      });
+      alert.querySelector(".btn_assign_g2")?.addEventListener("click", () => {
+        assign_lone_peak_identity(reviewRow, "g2");
+        render_density_plot();
+        document.dispatchEvent(new CustomEvent("cell-cycle-regions-changed"));
+      });
+      plot_area.parentElement.insertBefore(alert, plot_area);
+    }
+  } catch (error) {
+    console.error("Single peak alert failed to render:", error);
+  }
+
   // Display-only pan/zoom gestures (plot_viewport.js). Installed last so its
   // interaction surface is inserted under the drawn layers while its SVG-level
   // listeners see everything that bubbles. Wrapped for the same reason as the
@@ -503,7 +549,10 @@ export function render_density_plot() {
     max_width: Math.max(190, margin.right - 18),
   });
 
-  make_plot_accessible(svg, { mode: "Overlay", entries: series, fits, x_domain, y_domain });
+  // UI-13: residual strip shares this render's x_scale so its bins line up
+  // with the histogram above it; hides itself when no fit has residuals.
+  render_residual_panel(fits, x_scale, width);
+
   render_plot_accessibility_summary(series, fits, x_domain, y_domain);
   render_plot_clipping_warning(series);
 

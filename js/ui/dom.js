@@ -59,6 +59,9 @@ export const time_qc_summary = document.querySelector("#time_qc_summary");
 export const peak_review_focus = document.querySelector("#peak_review_focus");
 export const detect_peaks_button = document.querySelector("#detect_peaks_button");
 export const peak_review_status = document.querySelector("#peak_review_status");
+export const single_peak_review_actions = document.querySelector("#single_peak_review_actions");
+export const assign_lone_peak_g1_button = document.querySelector("#assign_lone_peak_g1_button");
+export const assign_lone_peak_g2_button = document.querySelector("#assign_lone_peak_g2_button");
 export const peak_region_g1_left = document.querySelector("#peak_region_g1_left");
 export const peak_region_g1_right = document.querySelector("#peak_region_g1_right");
 export const peak_region_g2_left = document.querySelector("#peak_region_g2_left");
@@ -69,6 +72,7 @@ export const peak_regions_accept_button = document.querySelector("#peak_regions_
 export const peak_regions_apply_all_button = document.querySelector("#peak_regions_apply_all_button");
 
 // ── Model & Fit (sidebar cell-cycle model panel) ─────────────────────────────
+export const cell_cycle_fit_group = document.querySelector("#cell_cycle_fit_group");
 export const cell_cycle_model_select = document.querySelector("#cell_cycle_model_select");
 export const cell_cycle_fit_current_button = document.querySelector("#cell_cycle_fit_current_button");
 export const cell_cycle_fit_all_button = document.querySelector("#cell_cycle_fit_all_button");
@@ -78,6 +82,13 @@ export const cell_cycle_domain_sensitivity_button = document.querySelector("#cel
 export const cell_cycle_domain_sensitivity_status = document.querySelector("#cell_cycle_domain_sensitivity_status");
 export const cell_cycle_resampling_button = document.querySelector("#cell_cycle_resampling_button");
 export const cell_cycle_resampling_status = document.querySelector("#cell_cycle_resampling_status");
+export const sidebar_modeling_scroll_affordance = document.querySelector("#sidebar_modeling_scroll_affordance");
+
+// ── Residual panel (UI-13) ───────────────────────────────────────────────────
+export const residual_panel = document.querySelector("#residual_panel");
+export const residual_panel_title = document.querySelector("#residual_panel_title");
+export const residual_panel_normalize = document.querySelector("#residual_panel_normalize");
+export const residual_panel_body = document.querySelector("#residual_panel_body");
 
 // ── Plot toolbar axis-range button ───────────────────────────────────────────
 // AD-1: this button lives in dom.js (not plotting/data.js, which WS-1 owns for
@@ -131,6 +142,9 @@ export const djf_scatter_coverage = document.querySelector("#djf_scatter_coverag
 export const djf_scatter_coverage_value = document.querySelector("#djf_scatter_coverage_value");
 export const djf_scatter_plot = document.querySelector("#djf_scatter_plot");
 export const djf_scatter_caption = document.querySelector("#djf_scatter_caption");
+
+// ── Theme controls (UI-12) ──────────────────────────────────────────────────
+export const theme_toggle = document.querySelector("#theme_toggle");
 
 // ── App shell / sidebar ──────────────────────────────────────────────────────
 export const app_shell = document.querySelector(".app");
