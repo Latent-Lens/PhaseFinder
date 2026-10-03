@@ -79,6 +79,7 @@ module.exports = defineConfig({
         main: path.resolve(__dirname, "index.html"),
         help: path.resolve(__dirname, "help/index.html"),
         helpGettingStarted: path.resolve(__dirname, "help/help-getting-started.html"),
+        helpFirstAnalysis: path.resolve(__dirname, "help/help-first-analysis.html"),
         helpMetadata: path.resolve(__dirname, "help/help-metadata.html"),
         helpPlotting: path.resolve(__dirname, "help/help-plotting.html"),
         helpModeling: path.resolve(__dirname, "help/help-modeling.html"),

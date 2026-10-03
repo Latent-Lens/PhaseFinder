@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Step-by-step tutorial for your first cell-cycle analysis in PhaseFinder using bundled synthetic data with known ground truth." />
+    <title>Your First Analysis | PhaseFinder Help</title>
+    <link rel="stylesheet" href="../css/help.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon/favicon-32x32.png" />
+  </head>
+  <body>
+    <header class="help_header">
+      <a href="./index.html" aria-label="PhaseFinder help home"><img class="help_header_logo" src="../assets/img/logo.png" alt="PhaseFinder" /></a>
+      <a class="help_header_title help_header_home" href="./index.html">Help Center</a>
+      <a class="help_back_link" href="../index.html" target="_blank" rel="noopener">Open PhaseFinder</a>
+    </header>
+
+    <div class="help_layout">
+      <aside class="help_toc">
+        <p class="toc_label">Help topics</p>
+        <nav aria-label="Help topics">
+          <ol>
+            <li><a href="./index.html">Help home</a></li>
+            <li><a href="./help-getting-started.html">Getting Started</a></li>
+            <li><a href="./help-first-analysis.html" class="current">Your First Analysis</a></li>
+            <li><a href="./help-metadata.html">Metadata & Sample Table</a></li>
+            <li><a href="./help-plotting.html">Plotting Events</a></li>
+            <li><a href="./help-modeling.html">Cell-Cycle Modeling</a></li>
+            <li><a href="./help-cell-cycle-accuracy.html">Cell-Cycle Accuracy</a></li>
+            <li><a href="./help-cell-cycle-math-check.html">Is the Cell-Cycle Math Right?</a></li>
+            <li><a href="./help-statistics.html">Summary Statistics</a></li>
+            <li><a href="./help-sessions.html">Sessions & Layout</a></li>
+            <li><a href="./help-troubleshooting.html">Troubleshooting & Compatibility</a></li>
+          </ol>
+        </nav>
+      </aside>
+
+      <main class="help_content">
+        <p class="help_breadcrumb"><a href="./index.html">Help home</a> / Your First Analysis</p>
+        <h1>Your First Analysis: Step-by-Step Tutorial</h1>
+        <p class="help_lede">A hands-on, linear tutorial guiding you from loading a bundled sample file to quality control, peak detection, model fitting, residual inspection, warning interpretation, and export.</p>
+
+        <section id="tutorial-overview" class="help_section">
+          <h2>1. Overview &amp; Bundled Sample Data</h2>
+          <p>This tutorial walks through a complete, reproducible cell-cycle analysis in PhaseFinder. Unlike reference documentation, every step here states the exact inputs, user actions, and expected numeric outcomes so you can verify your results.</p>
+          <p>Because PhaseFinder operates strictly in your browser (no server uploads), you can use the bundled synthetic FCS fixtures included in the repository:</p>
+          <ul>
+            <li><strong>Primary Tutorial Fixture:</strong> <code>tests/validation/validation_test_data/synthetic_fcs/files/truth_clean_50_30_20.fcs</code><br />
+            This is a clean, balanced diploid sample generated with an exact known ground truth: <strong>50% G1, 30% S, 20% G2/M</strong> (12,000 events total).</li>
+            <li><strong>Challenging Diagnostic Fixture:</strong> <code>tests/validation/validation_test_data/synthetic_fcs/files/arrest_g1_95_04_01.fcs</code><br />
+            A simulated G1-arrested sample (<strong>95% G1, 4% S, 1% G2/M</strong>) used in Section 7 to demonstrate realistic warning interpretation when a peak is nearly absent.</li>
+          </ul>
+        </section>
+
+        <section id="step-1-load" class="help_section">
+          <h2>2. Step 1: Loading the FCS File</h2>
+          <p>Launch PhaseFinder in your browser by opening the web application or running <code>npm run dev</code> locally.</p>
+          <ol>
+            <li>Locate the file <code>truth_clean_50_30_20.fcs</code> in your file browser.</li>
+            <li>Drag and drop the file into the sidebar area marked <span class="ui_label">Drop FCS files here</span> (or click the area to open the file chooser).</li>
+          </ol>
+          <div class="callout tip">
+            <p class="callout_title">Expected Outcome</p>
+            <p>PhaseFinder parses the FCS headers and TEXT segment instantly. A new row appears in the sample table at the bottom of the screen with:</p>
+            <ul>
+              <li><strong>Filename:</strong> <code>truth_clean_50_30_20</code></li>
+              <li><strong>Events:</strong> <code>12,000</code></li>
+              <li><strong>Included checkbox:</strong> Checked (active for plotting)</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="step-2-plot" class="help_section">
+          <h2>3. Step 2: Selecting the Channel and Plotting</h2>
+          <p>Before running mathematical models, inspect the raw fluorescence distribution:</p>
+          <ol>
+            <li>In the sidebar, locate the <span class="ui_label">Select channel</span> dropdown. PhaseFinder automatically identifies and selects <code>DNA-A</code> as the primary DNA-content channel.</li>
+            <li>Click the <span class="ui_label">Plot Channel Events</span> button.</li>
+          </ol>
+          <div class="callout tip">
+            <p class="callout_title">Expected Outcome</p>
+            <p>The main plot panel displays an overlaid event histogram:</p>
+            <ul>
+              <li>A prominent G1 peak centered at channel <strong>~64,000</strong>.</li>
+              <li>A secondary G2/M peak centered at channel <strong>~128,000</strong> (matching the expected 2.0&times; DNA ratio).</li>
+              <li>A distribution of intermediate values between the two peaks representing S-phase cells.</li>
+              <li>The plot header confirms <code>1 sample, 12,000 events</code>.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="step-3-qc" class="help_section">
+          <h2>4. Step 3: Pre-Modeling Quality Control (QC)</h2>
+          <p>Quality control prevents flawed or unrepresentative events from corrupting model fitting. PhaseFinder uses a layered, fail-closed QC pipeline consisting of four stages:</p>
+          <ol>
+            <li>Click <span class="ui_label">Cell Cycle Modeling</span> in the sidebar. The view switches to the modeling workspace showing the <span class="ui_label">Pre-modeling QC Filtering</span> section.</li>
+            <li>Click <span class="ui_label">Run All</span> to execute all four filter stages sequentially:
+              <ul>
+                <li><strong>Structural QC:</strong> Rejects out-of-range, negative, or saturated sensor readings.</li>
+                <li><strong>Time QC:</strong> Removes periods of unstable flow rate or optical drift.</li>
+                <li><strong>Cell Gate:</strong> Isolates the primary biological population using forward and side scatter (FSC-A vs. SSC-A).</li>
+                <li><strong>Singlet Gate:</strong> Distinguishes single cells from doublets and clumps using pulse geometry (DNA-A vs. DNA-W / DNA-H).</li>
+              </ul>
+            </li>
+          </ol>
+          <div class="callout tip">
+            <p class="callout_title">Expected Outcome</p>
+            <p>Since <code>truth_clean_50_30_20.fcs</code> is a clean synthetic control without artifacts:</p>
+            <ul>
+              <li>All four stages display green checkmarks.</li>
+              <li><strong>0 events removed</strong> (100% retention, 12,000 / 12,000 events).</li>
+              <li>The filtered histogram updates automatically and is ready for peak review.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="step-4-peaks" class="help_section">
+          <h2>5. Step 4: Peak Identification and Review</h2>
+          <p>Cell-cycle models require initial estimates of the G1 and G2/M positions. In PhaseFinder, peak boundaries define the search range and initial estimates for optimization:</p>
+          <ol>
+            <li>In the sidebar under <span class="ui_label">Identify Peaks</span>, click <span class="ui_label">Detect Peaks</span>.</li>
+            <li>Inspect the suggested boundaries marked on the histogram:
+              <ul>
+                <li><strong>G1 region:</strong> approximately <strong>53,760 to 74,240</strong>.</li>
+                <li><strong>G2 region:</strong> approximately <strong>105,472 to 150,528</strong>.</li>
+              </ul>
+            </li>
+            <li>Click <span class="ui_label">Accept</span> to validate and lock these peak regions.</li>
+          </ol>
+          <div class="callout tip">
+            <p class="callout_title">Expected Outcome</p>
+            <p>The status badge in the Identify Peaks panel changes to "Reviewed". Accepting the peak regions enables the <span class="ui_label">Fit Current</span> and <span class="ui_label">Fit All Samples</span> buttons in the <span class="ui_label">Model &amp; Fit</span> section.</p>
+          </div>
+        </section>
+
+        <section id="step-5-fit" class="help_section">
+          <h2>6. Step 5: Model Selection and Fitting</h2>
+          <p>Now fit a mathematical cell-cycle distribution to the data:</p>
+          <ol>
+            <li>Under <span class="ui_label">Model &amp; Fit</span>, click the model selection dropdown (initially showing <span class="ui_label">Model Selection…</span>).</li>
+            <li>Select <strong>Dean&ndash;Jett</strong>.</li>
+            <li>Click <span class="ui_label">Fit Current</span>.</li>
+          </ol>
+          <div class="callout tip">
+            <p class="callout_title">Expected Outcome</p>
+            <p>The optimization runs in a dedicated background worker and updates the display upon completion:</p>
+            <ul>
+              <li><strong>Fitted Phase Fractions:</strong> G1 &approx; <strong>49.1%</strong>, S &approx; <strong>32.5%</strong>, G2/M &approx; <strong>18.4%</strong> (recovering the planted 50 / 30 / 20 truth within 2.5 percentage points).</li>
+              <li><strong>G2/G1 Ratio:</strong> &approx; 2.01 (indicating correct harmonic alignment).</li>
+              <li><strong>Convergence Reason:</strong> <code>objective_step_tolerance</code>.</li>
+              <li><strong>Status:</strong> "Reportable" (displayed in the table and plot legend).</li>
+              <li>Fitted curves appear over the histogram: red for G1, green/yellow for S phase, blue for G2/M, and a black line for the total model.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="step-6-residuals" class="help_section">
+          <h2>7. Step 6: Evaluating Fit Quality &amp; Residuals</h2>
+          <p>Never rely solely on numerical percentages; always inspect the fit quality visually using the aligned residual plot directly beneath the histogram.</p>
+          <ul>
+            <li><strong>Pearson Residuals:</strong> Each bin displays the normalized residual \( z_i = \frac{O_i - E_i}{\sqrt{E_i}} \), where \( O_i \) is the observed count and \( E_i \) is the model expectation.</li>
+            <li><strong>Confidence Band:</strong> The shaded horizontal band marks the &plusmn;2 standard error threshold. Under good Poisson fit conditions, approximately 95% of residuals should lie within this band.</li>
+            <li><strong>Goodness-of-Fit:</strong> The reduced deviance is approximately <strong>1.1</strong>, close to the ideal value of 1.0.</li>
+            <li><strong>Pattern Check:</strong> Residuals should be randomly scattered above and below zero without persistent runs or waves.</li>
+          </ul>
+        </section>
+
+        <section id="step-7-warnings" class="help_section">
+          <h2>8. Step 7: Realistic Warning Interpretation (Arrested / Edge Cases)</h2>
+          <p>A key strength of PhaseFinder is its fail-safe reporting: when data does not support a reliable fit, it flags specific diagnostic warnings rather than reporting misleading numbers with false confidence.</p>
+          <p>To see how warnings work, test the G1-arrested fixture:</p>
+          <ol>
+            <li>Load <code>tests/validation/validation_test_data/synthetic_fcs/files/arrest_g1_95_04_01.fcs</code> (95% G1, 4% S, 1% G2/M).</li>
+            <li>Select <code>DNA-A</code> and click <span class="ui_label">Plot Channel Events</span>.</li>
+            <li>In <span class="ui_label">Cell Cycle Modeling</span>, run QC with <span class="ui_label">Run All</span>.</li>
+            <li>Click <span class="ui_label">Detect Peaks</span>. Because the G2/M peak has only ~120 events out of 12,000, the detector cannot find a distinct second peak and automatically infers G2 at 2&times; the G1 position. Click <span class="ui_label">Accept</span>.</li>
+            <li>Select <strong>Dean&ndash;Jett&ndash;Fox</strong> and click <span class="ui_label">Fit Current</span>.</li>
+          </ol>
+          <div class="callout warn">
+            <p class="callout_title">Interpreting Diagnostic Warnings</p>
+            <p>The fit completes, but PhaseFinder flags the result as <strong>Reportable with warnings</strong> (or <strong>Limited reliability</strong>):</p>
+            <ul>
+              <li><strong>Parameter at Bound:</strong> Warnings indicate that <code>waveSigma</code> or <code>waveMean</code> hit their boundary constraints (e.g. 0.02 or 0.98). With almost no S-phase events, the complex Fox polynomial cannot be properly constrained.</li>
+              <li><strong>Ill-Conditioned Jacobian:</strong> High condition numbers indicate parameter colinearity (e.g. <code>waveMean</code> and <code>waveSigma</code> correlated &gt; 0.99).</li>
+              <li><strong>Restart Disagreement:</strong> Multiple optimization restarts found differing parameter combinations with nearly identical deviances.</li>
+            </ul>
+            <p><strong>Remediation:</strong> When encountering these warnings on low-S or arrested samples, switch to a simpler model such as <strong>Dean&ndash;Jett</strong> or <strong>Watson Classic</strong>. Fitting <code>arrest_g1_95_04_01.fcs</code> with Dean&ndash;Jett yields an accurate recovery (95.3% G1, 4.0% S, 0.8% G2/M) with reduced parameter instability.</p>
+          </div>
+        </section>
+
+        <section id="step-8-export" class="help_section">
+          <h2>9. Step 8: Exporting Results and Saving the Session</h2>
+          <p>Once your analysis is complete, preserve your findings and audit trail:</p>
+          <ul>
+            <li><strong>Download Publication Graphics:</strong> Click <span class="ui_label">Download</span> in the plot controls to save SVG vector graphics or high-resolution PNG images.</li>
+            <li><strong>Machine-Readable JSON:</strong> Select JSON in the export dialog to obtain a complete provenance package containing software versions, policy configuration version (<code>policy_config_version</code>), model parameters, standard errors, and goodness-of-fit metrics.</li>
+            <li><strong>Per-Bin CSV:</strong> Export observed counts, modeled curves, and residual values for external verification in R, Python, or Prism.</li>
+            <li><strong>Save Session:</strong> Click <span class="ui_label">Save</span> in the top header. This downloads a <code>.phasefinder.toml</code> session file. You can reload this file at any time via <span class="ui_label">Load</span> to fully restore your workspace, metadata, and fitted models.</li>
+          </ul>
+        </section>
+
+        <nav class="help_page_nav" aria-label="Previous and next help topics">
+          <a href="./help-getting-started.html">&larr; Getting Started</a>
+          <a href="./index.html">Help home</a>
+          <a href="./help-metadata.html">Metadata & Sample Table &rarr;</a>
+        </nav>
+
+        <p class="help_footer">PhaseFinder Help &mdash; <a href="./index.html">all help topics</a> &middot; <a href="../index.html">back to the app</a>.</p>
+      </main>
+    </div>
+  </body>
+</html>

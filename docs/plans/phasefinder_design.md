@@ -250,13 +250,11 @@ Sessions are TOML. The file stores enough to **reconnect** the original FCS file
 
 ## 8. UI structure and design system
 
-Header · sidebar (file/channel controls, swapping to QC + peaks + model panels) · metadata table · plot panel · footer status bar. Both panel dividers are keyboard-operable `role="separator"` controls. Modals share one focus controller (`js/ui/modal_focus.js`).
-
-**Announcements** use one deliberate channel: `role="status" aria-live="polite"` on the footer for routine updates, plus a separate `role="alert"` element for actionable failures.
+Header · sidebar (file/channel controls, swapping to QC + peaks + model panels) · metadata table · plot panel · footer status bar. Both panel dividers can be dragged. Modals share close and focus-return behavior (`js/ui/modal_focus.js`).
 
 **The design system is token-based** (`css/base.css`), which is what makes a dark theme tractable. Current tokens cover surfaces, brand/accent, status, focus rings, component surfaces, callouts, shadows, and the plot series read by `plotting/data.js` through `getComputedStyle`.
 
-> **Known token defect:** `--border: #d9dee8` is **1.35:1** against white where WCAG requires 3:1 for control boundaries. Tracked as UI-03.
+> **Historical token audit:** UI-03 recorded `--border: #d9dee8` at **1.35:1** against white. The current desktop product scope is in the [README](../../README.md#scope).
 
 ---
 
@@ -273,7 +271,6 @@ A strip beneath the main histogram showing per-bin `(fitted − observed)`. **Th
 - **Pearson-normalised by default** (`(fitted − observed)/√fitted`). Counts are Poisson, so raw residuals scale with peak height and the eye is drawn to G1 regardless of fit quality. A toggle exposes raw.
 - **±2 band drawn first**, residual stems over it, zero line on top.
 - **Shares the histogram's x-scale** so the strips align vertically with the features they explain.
-- **Accessible equivalent is mandatory**, not decorative: the `<desc>` states how many bins fall outside ±2, as a percentage, and the largest deviation — the same facts a sighted reader takes from the shape.
 
 ```html
 <div id="residual_panel" class="residual_panel" hidden>
@@ -283,8 +280,7 @@ A strip beneath the main histogram showing per-bin `(fitted − observed)`. **Th
       <input id="residual_panel_normalize" type="checkbox" checked /> Pearson (÷√fitted)
     </label>
   </div>
-  <svg id="residual_plot" role="img" aria-labelledby="residual_panel_title residual_plot_desc">
-    <desc id="residual_plot_desc"></desc>
+  <svg id="residual_plot">
   </svg>
 </div>
 ```

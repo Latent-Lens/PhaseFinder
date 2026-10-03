@@ -1,0 +1,2848 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PhaseFinder — Proposed Git Commit Clusters</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --teal: #0d9488;
+      --teal-soft: #f0fdfa;
+      --refactor: #7c3aed;
+      --refactor-soft: #f5f3ff;
+      --feat: #0284c7;
+      --feat-soft: #f0f9ff;
+      --perf: #d97706;
+      --perf-soft: #fffbeb;
+      --test: #059669;
+      --test-soft: #ecfdf5;
+      --ci: #4f46e5;
+      --ci-soft: #eef2ff;
+      --tooling: #475569;
+      --tooling-soft: #f8fafc;
+      --docs: #0891b2;
+      --docs-soft: #ecfeff;
+      --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #090d16;
+        --panel: #111827;
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --border: #1f2937;
+        --border-strong: #374151;
+        --accent: #60a5fa;
+        --accent-soft: #1e293b;
+        --teal: #2dd4bf;
+        --teal-soft: #132e2f;
+        --refactor: #a78bfa;
+        --refactor-soft: #2e1065;
+        --feat: #38bdf8;
+        --feat-soft: #082f49;
+        --perf: #fbbf24;
+        --perf-soft: #451a03;
+        --test: #34d399;
+        --test-soft: #064e3b;
+        --ci: #818cf8;
+        --ci-soft: #1e1b4b;
+        --tooling: #94a3b8;
+        --tooling-soft: #1e293b;
+        --docs: #22d3ee;
+        --docs-soft: #164e63;
+        color-scheme: dark;
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #090d16;
+      --panel: #111827;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #1f2937;
+      --border-strong: #374151;
+      --accent: #60a5fa;
+      --accent-soft: #1e293b;
+      --teal: #2dd4bf;
+      --teal-soft: #132e2f;
+      --refactor: #a78bfa;
+      --refactor-soft: #2e1065;
+      --feat: #38bdf8;
+      --feat-soft: #082f49;
+      --perf: #fbbf24;
+      --perf-soft: #451a03;
+      --test: #34d399;
+      --test-soft: #064e3b;
+      --ci: #818cf8;
+      --ci-soft: #1e1b4b;
+      --tooling: #94a3b8;
+      --tooling-soft: #1e293b;
+      --docs: #22d3ee;
+      --docs-soft: #164e63;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14.5px;
+      line-height: 1.6;
+      padding-bottom: 80px;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    .hero {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 36px 0 28px;
+      margin-bottom: 32px;
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .hero-title h1 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .hero-tagline {
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .theme-toggle-btn {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-refactor { background: var(--refactor-soft); color: var(--refactor); border: 1px solid var(--refactor); }
+    .badge-feat { background: var(--feat-soft); color: var(--feat); border: 1px solid var(--feat); }
+    .badge-perf { background: var(--perf-soft); color: var(--perf); border: 1px solid var(--perf); }
+    .badge-test { background: var(--test-soft); color: var(--test); border: 1px solid var(--test); }
+    .badge-ci { background: var(--ci-soft); color: var(--ci); border: 1px solid var(--ci); }
+    .badge-tooling { background: var(--tooling-soft); color: var(--tooling); border: 1px solid var(--tooling); }
+    .badge-docs { background: var(--docs-soft); color: var(--docs); border: 1px solid var(--docs); }
+
+    .task-pill {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    /* Table */
+    .overview-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 36px;
+      box-shadow: var(--shadow);
+    }
+
+    .overview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .overview-header h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .search-box {
+      position: relative;
+    }
+    .search-box input {
+      font-family: inherit;
+      font-size: 0.88rem;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      padding: 7px 12px;
+      border-radius: var(--radius);
+      width: 260px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 2px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tr:hover {
+      background: var(--accent-soft);
+    }
+
+    .col-num {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--accent);
+      width: 50px;
+    }
+    .col-count {
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-align: right;
+      width: 70px;
+    }
+    .table-checklist {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 3px;
+    }
+
+    /* Global Actions */
+    .global-actions {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .action-note {
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    /* Cluster Cards */
+    .clusters-container {
+      display: grid;
+      gap: 28px;
+    }
+
+    .cluster-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .cluster-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-strong);
+    }
+
+    .card-header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .card-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .cluster-index {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .card-header h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .file-counter {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 20px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .card-body {
+      padding: 24px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .meta-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .meta-tasks {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .section-block {
+      display: grid;
+      gap: 8px;
+    }
+
+    .section-block h3 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .block-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-copy {
+      font-family: var(--font-sans);
+      font-size: 0.78rem;
+      font-weight: 500;
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-copy:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+    }
+
+    .code-box {
+      font-family: var(--font-mono);
+      font-size: 0.83rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    .bash-box {
+      background: #0d1117;
+      color: #e6edf3;
+      border-color: #30363d;
+    }
+
+    .files-details {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+    }
+
+    .files-details summary {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.86rem;
+      color: var(--muted);
+      user-select: none;
+    }
+    .files-details summary:hover {
+      color: var(--text);
+    }
+
+    .file-list {
+      list-style: none;
+      border-top: 1px solid var(--border);
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+    .file-item:hover {
+      background: var(--panel);
+    }
+
+    .file-status {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      min-width: 32px;
+      text-align: center;
+    }
+    .status-modified { background: #fef3c7; color: #b45309; }
+    .status-untracked { background: #dcfce7; color: #15803d; }
+    .status-deleted { background: #fee2e2; color: #b91c1c; }
+
+    .file-link {
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+    .file-link:hover {
+      color: var(--accent);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 0.86rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 1000;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="hero">
+    <div class="container">
+      <div class="hero-top">
+        <div class="hero-title">
+          <h1>PhaseFinder — Git Commit Clusters</h1>
+          <p class="hero-tagline">Grouping 180 uncommitted changes into 15 reviewable, atomic conventional commits.</p>
+        </div>
+        <button type="button" class="theme-toggle-btn" onclick="toggleTheme()">Toggle Theme</button>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-value">15</div>
+          <div class="stat-label">Commit Clusters</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">180</div>
+          <div class="stat-label">Files Accounted For</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">cell-cycle-report-warn</div>
+          <div class="stat-label">Working Branch</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">Clean (0 Missing)</div>
+          <div class="stat-label">Inventory Partition</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="overview-section">
+      <div class="overview-header">
+        <h2>Summary Table</h2>
+        <div class="search-box">
+          <input type="text" id="clusterSearch" placeholder="Search clusters or files..." oninput="filterClusters(this.value)">
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type(Scope)</th>
+              <th>Cluster Description</th>
+              <th style="text-align: right;">Files</th>
+            </tr>
+          </thead>
+          <tbody id="overviewTableBody">
+            
+        <tr>
+          <td class="col-num"><a href="#cluster-1">#1</a></td>
+          <td><span class="badge badge-refactor">refactor(ui)</span></td>
+          <td class="col-title">
+            <a href="#cluster-1"><strong>Retire mobile/tablet responsive layouts and accessibility-only code</strong></a>
+            <div class="table-checklist"><span class="task-pill">CLEAN-05</span> <span class="task-pill">CLEAN-06</span> <span class="task-pill">READY-03</span></div>
+          </td>
+          <td class="col-count">26</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-2">#2</a></td>
+          <td><span class="badge badge-feat">feat(ui)</span></td>
+          <td class="col-title">
+            <a href="#cluster-2"><strong>Light / Dark / System theme switcher</strong></a>
+            <div class="table-checklist"><span class="task-pill">UI-12</span></div>
+          </td>
+          <td class="col-count">3</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-3">#3</a></td>
+          <td><span class="badge badge-feat">feat(brand)</span></td>
+          <td class="col-title">
+            <a href="#cluster-3"><strong>Brand guidelines and automated asset verification</strong></a>
+            <div class="table-checklist"><span class="task-pill">BRAND-01</span></div>
+          </td>
+          <td class="col-count">3</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-4">#4</a></td>
+          <td><span class="badge badge-feat">feat(plotting)</span></td>
+          <td class="col-title">
+            <a href="#cluster-4"><strong>Histogram residual strip panel with Pearson normalization</strong></a>
+            <div class="table-checklist"><span class="task-pill">UI-13</span> <span class="task-pill">FEAT-01</span></div>
+          </td>
+          <td class="col-count">2</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-5">#5</a></td>
+          <td><span class="badge badge-feat">feat(scientific)</span></td>
+          <td class="col-title">
+            <a href="#cluster-5"><strong>Typed result contracts and centralized policy thresholds</strong></a>
+            <div class="table-checklist"><span class="task-pill">MAINT-01</span> <span class="task-pill">MAINT-02</span></div>
+          </td>
+          <td class="col-count">11</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-6">#6</a></td>
+          <td><span class="badge badge-feat">feat(cell-cycle)</span></td>
+          <td class="col-title">
+            <a href="#cluster-6"><strong>Bounded worker pool, ratio bounds tuning, and Watson warnings</strong></a>
+            <div class="table-checklist"><span class="task-pill">MODEL-10</span> <span class="task-pill">MODEL-11</span> <span class="task-pill">MODEL-12</span> <span class="task-pill">PERF-01</span> <span class="task-pill">GATE-03</span> <span class="task-pill">GATE-04</span></div>
+          </td>
+          <td class="col-count">24</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-7">#7</a></td>
+          <td><span class="badge badge-feat">feat(peaks)</span></td>
+          <td class="col-title">
+            <a href="#cluster-7"><strong>Lone-peak review alert and wider detection ratio range</strong></a>
+            <div class="table-checklist"><span class="task-pill">PEAK-02</span> <span class="task-pill">AMBIG-01</span></div>
+          </td>
+          <td class="col-count">6</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-8">#8</a></td>
+          <td><span class="badge badge-perf">perf(qc)</span></td>
+          <td class="col-title">
+            <a href="#cluster-8"><strong>Peak-tracking Time QC downsampling and Cell Gate measurement</strong></a>
+            <div class="table-checklist"><span class="task-pill">QC-07</span> <span class="task-pill">QC-08</span></div>
+          </td>
+          <td class="col-count">9</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-9">#9</a></td>
+          <td><span class="badge badge-feat">feat(session)</span></td>
+          <td class="col-title">
+            <a href="#cluster-9"><strong>Model version drift checks, warning gates, and schema validation</strong></a>
+            <div class="table-checklist"><span class="task-pill">STATE-01</span> <span class="task-pill">REL-05</span></div>
+          </td>
+          <td class="col-count">11</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-10">#10</a></td>
+          <td><span class="badge badge-test">test(validation)</span></td>
+          <td class="col-title">
+            <a href="#cluster-10"><strong>FlowJo cross-tool comparison harness, sweeps, and scoring</strong></a>
+            <div class="table-checklist"><span class="task-pill">VALID-01</span> <span class="task-pill">VALID-02</span> <span class="task-pill">VALID-03</span></div>
+          </td>
+          <td class="col-count">14</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-11">#11</a></td>
+          <td><span class="badge badge-ci">ci</span></td>
+          <td class="col-title">
+            <a href="#cluster-11"><strong>CI metrics tracking, candidate provenance diffing, and staging deploy</strong></a>
+            <div class="table-checklist"><span class="task-pill">CI-05</span> <span class="task-pill">TEST-02</span> <span class="task-pill">BROWSER-01</span></div>
+          </td>
+          <td class="col-count">12</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-12">#12</a></td>
+          <td><span class="badge badge-tooling">tooling</span></td>
+          <td class="col-title">
+            <a href="#cluster-12"><strong>Human intervention workflow CLI, blocker tracking, and status generator</strong></a>
+            <div class="table-checklist"><span class="task-pill">HI-DATA</span> <span class="task-pill">HI-REFERENCE</span> <span class="task-pill">HI-EXPERT</span> <span class="task-pill">HI-DECIDE</span> <span class="task-pill">HI-RELEASE</span></div>
+          </td>
+          <td class="col-count">11</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-13">#13</a></td>
+          <td><span class="badge badge-test">test(e2e)</span></td>
+          <td class="col-title">
+            <a href="#cluster-13"><strong>Real browser model fitting suites and selector realignment</strong></a>
+            <div class="table-checklist"><span class="task-pill">TEST-06</span> <span class="task-pill">TEST-07</span></div>
+          </td>
+          <td class="col-count">8</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-14">#14</a></td>
+          <td><span class="badge badge-docs">docs</span></td>
+          <td class="col-title">
+            <a href="#cluster-14"><strong>First-analysis tutorial, scientific papers, baselines, and master checklist</strong></a>
+            <div class="table-checklist"><span class="task-pill">DOC-06</span> <span class="task-pill">DOC-07</span> <span class="task-pill">DOC-08</span> <span class="task-pill">PERF-03</span></div>
+          </td>
+          <td class="col-count">37</td>
+        </tr>
+        
+        <tr>
+          <td class="col-num"><a href="#cluster-15">#15</a></td>
+          <td><span class="badge badge-feat">feat(ui)</span></td>
+          <td class="col-title">
+            <a href="#cluster-15"><strong>App shell DOM wiring for theme toggle, residual panel, and lone-peak UI</strong></a>
+            <div class="table-checklist"><span class="task-pill">UI-12</span> <span class="task-pill">UI-13</span> <span class="task-pill">PEAK-02</span> <span class="task-pill">OBS-01</span></div>
+          </td>
+          <td class="col-count">3</td>
+        </tr>
+        
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="global-actions">
+      <div>
+        <strong>Sequential Git Execution</strong>
+        <div class="action-note">You can run clusters individually or copy the complete sequential sequence.</div>
+      </div>
+      <button type="button" class="btn btn-primary" onclick="copySnippet(this, 'all-commands-store')">Copy All 15 Git Commands</button>
+      <pre id="all-commands-store" style="display:none;"># --- Cluster 1: Retire mobile/tablet responsive layouts and accessibility-only code ---
+git rm css/responsive.css tests/ci/test_contrast_tokens.py
+git add css/base.css css/feedback.css css/help.css css/layout.css css/plot.css css/sidebar.css css/table.css package-lock.json js/ui/modal_focus.js js/ui/panels.js js/ui/panel_resize.js js/ui/column_remove.js js/ui/table_render.js js/ui/table_support.js js/ui/status_channels.js js/ui/compatibility.js js/ui/draggable_modal.js js/ui/cell_cycle_columns.js js/ui/hover_text.js js/plotting/plot_accessibility.js js/plotting/plot_export.js js/plotting/plot_toolbar.js js/plotting/axis_modal.js js/plotting/ridge_review.js
+git commit -m &quot;refactor(ui): retire mobile/tablet responsive layouts and accessibility-only code (CLEAN-05, CLEAN-06, READY-03)&quot; 
+
+# --- Cluster 2: Light / Dark / System theme switcher ---
+git add js/ui/theme.js js/main.js js/plotting/data.js
+git commit -m &quot;feat(ui): add theme switcher for light, dark, and system modes (UI-12)&quot; 
+
+# --- Cluster 3: Brand guidelines and automated asset verification ---
+git add docs/brand-guidelines.md assets/img/README.md tests/ci/test_brand_assets.py
+git commit -m &quot;feat(brand): establish brand assets guidelines and dimension validation (BRAND-01)&quot; 
+
+# --- Cluster 4: Histogram residual strip panel with Pearson normalization ---
+git add js/plotting/residual_panel.js js/plotting/curve_tooltip.js
+git commit -m &quot;feat(plotting): histogram residual strip panel with Pearson normalization (UI-13, FEAT-01)&quot; 
+
+# --- Cluster 5: Typed result contracts and centralized policy thresholds ---
+git add js/analysis/policy_thresholds.js docs/policy-thresholds-inventory.md tests/ci/test_policy_thresholds.py js/analysis/cell_cycle/result_contract.js docs/scientific-result-contract.md tests/ci/test_result_contracts.py js/analysis/cell_cycle/constraint_audit.js js/analysis/cell_cycle/resampling.js js/analysis/cell_cycle/bin_settings_sync.js js/analysis/qc/acquisition_time_qc.js js/session/toml_io.js
+git commit -m &quot;feat(scientific): formalize typed result contracts and policy thresholds (MAINT-01, MAINT-02)&quot; 
+
+# --- Cluster 6: Bounded worker pool, ratio bounds tuning, and Watson warnings ---
+git add js/analysis/cell_cycle/models/dean_jett.js js/analysis/cell_cycle/models/dean_jett_fox.js js/analysis/cell_cycle/models/watson_classic.js js/analysis/cell_cycle/models/shared.js js/analysis/math/gaussian_bin_mass.js js/analysis/math/lm_solver.js js/analysis/cell_cycle/fit_client.js js/analysis/cell_cycle/fit_worker.js js/analysis/cell_cycle/modeling_state.js js/analysis/cell_cycle/modeling_ui.js js/analysis/cell_cycle/cloccs_client.js tests/unit/driving_code/unit_tests_cell_cycle_dean_jett.py tests/unit/driving_code/unit_tests_cell_cycle_watson_classic.py tests/unit/driving_code/unit_tests_cell_cycle_worker.py tests/unit/driving_code/unit_tests_cell_cycle_fit_orchestration.py tests/unit/driving_code/unit_tests_cell_cycle_modeling_state.py tests/unit/driving_code/unit_tests_cell_cycle_registry.py tests/unit/driving_code/unit_tests_djf_pipeline.py tests/unit/driving_code/unit_tests_djf_shared.py tests/unit/driving_code/unit_tests_cloccs.py tests/unit/driving_code/unit_tests_domain_sensitivity.py tests/unit/driving_code/unit_tests_gate_contract.py tests/ci/test_gate_entry_points.py tests/unit/test_harness.html
+git commit -m &quot;feat(cell-cycle): bounded worker pool, ratio bounds tuning, and Watson warnings (MODEL-10..12, PERF-01, GATE-03/04)&quot; 
+
+# --- Cluster 7: Lone-peak review alert and wider detection ratio range ---
+git add js/analysis/cell_cycle/peak_detection.js js/analysis/cell_cycle/peak_review_ui.js js/plotting/peak_region_overlay.js js/plotting/histogram_prep.js tests/unit/driving_code/unit_tests_cell_cycle_peak_detection.py tests/validation/driving_code/verify_peak_width.mjs
+git commit -m &quot;feat(peaks): lone-peak disambiguation alert and wider ratio detection (PEAK-02, AMBIG-01)&quot; 
+
+# --- Cluster 8: Peak-tracking Time QC downsampling and Cell Gate measurement ---
+git add js/analysis/qc/peak_tracking_time_qc.js js/analysis/qc/time_qc_diagnostic_plot.js js/analysis/pipeline/cell_cycle_pipeline.js js/analysis/pipeline/pipeline_state.js js/analysis/pipeline/pipeline_ui.js js/analysis/gating/scatter_modal.js tests/unit/driving_code/unit_tests_time_qc_peak_tracking.py tests/validation/validation_test_data/synthetic_fcs/verify_qc_calibration_fixtures.mjs tests/validation/driving_code/measure_flowjo_cell_gate.py
+git commit -m &quot;perf(qc): peak-tracking Time QC optimizations and Cell Gate measurement (QC-07, QC-08)&quot; 
+
+# --- Cluster 9: Model version drift checks, warning gates, and schema validation ---
+git add scripts/check-model-version.cjs scripts/preflight.cjs tests/ci/test_model_version_warning.py js/session/core.js js/session/modeling_session.js js/session/session_schema.js js/analysis/cell_cycle/export.js tests/unit/driving_code/unit_tests_session.py tests/unit/driving_code/unit_tests_cell_cycle_export.py tests/unit/driving_code/unit_tests_table.py tests/unit/driving_code/run_unit_tests.py
+git commit -m &quot;feat(session): model version drift detection and schema enforcement (STATE-01, REL-05)&quot; 
+
+# --- Cluster 10: FlowJo cross-tool comparison harness, sweeps, and scoring ---
+git add docs/audits/flowjo_reference_settings_2026_09_23.md docs/audits/evidence/flowjo_reference_2026_09_23 tests/validation/driving_code/flowjo_cross_tool_report.py tests/validation/driving_code/flowjo_sweep_RUNBOOK.md tests/validation/driving_code/flowjo_sweep_compare.py tests/validation/driving_code/flowjo_sweep_generate_inputs.py tests/validation/driving_code/flowjo_sweep_parse_export.py tests/validation/driving_code/flowjo_sweep_run.bat tests/validation/driving_code/flowjo_sweep_run.ps1 tests/validation/driving_code/test_flowjo_scoring.py tests/validation/driving_code/generate_flowjo_djf_reference.py tests/validation/driving_code/validation_tests.py tests/validation/validation_test_data/external_fcs/manifest.json tests/validation/validation_test_data/synthetic_fcs/benchmark.html
+git commit -m &quot;test(validation): FlowJo comparison harness, sweep runner, and scoring tools (VALID-01..03)&quot; 
+
+# --- Cluster 11: CI metrics tracking, candidate provenance diffing, and staging deploy ---
+git add .github/workflows/browser-compatibility.yml .github/workflows/deploy-release.yml .github/workflows/security.yml scripts/track_ci_metrics.py tests/ci/test_track_ci_metrics.py scripts/verify_provenance_comparison.py tests/ci/test_verify_provenance_comparison.py scripts/generate-provenance.cjs scripts/check-privacy.cjs package.json tests/ci/test_compatibility_evidence.py tests/e2e/driving_code/compatibility_evidence.py
+git commit -m &quot;ci: CI duration/flake metrics tracking, dist provenance verification, and staging deploy (CI-05, TEST-02, BROWSER-01)&quot; 
+
+# --- Cluster 12: Human intervention workflow CLI, blocker tracking, and status generator ---
+git add scripts/build_human_intervention_status.py docs/audits/human_intervention_guide.md docs/audits/human_intervention_status.html docs/audits/gap_audit_2026_10_03.html scripts/checklist_task.py scripts/build_checklist_status.py scripts/test_checklist_status.py docs/audits/checklist_status_template.html tests/ci/test_checklist_block.py tests/ci/test_check_documents.py scripts/check_documents.py
+git commit -m &quot;tooling: human intervention audit tracking, task blocking CLI, and checklist generator&quot; 
+
+# --- Cluster 13: Real browser model fitting suites and selector realignment ---
+git add tests/e2e/driving_code/tests_modeling.py tests/e2e/driving_code/tests_plotting.py tests/e2e/driving_code/tests_pipeline.py tests/e2e/driving_code/tests_sidebar.py tests/e2e/driving_code/tests_metadata_table.py tests/e2e/driving_code/tests_reset.py tests/e2e/driving_code/drive_flow.py tests/e2e/driving_code/dist_smoke.py
+git commit -m &quot;test(e2e): real model fitting suites, lone-peak verification, and selector alignment (TEST-06, TEST-07)&quot; 
+
+# --- Cluster 14: First-analysis tutorial, scientific papers, baselines, and master checklist ---
+git add CHANGELOG.md help/help-first-analysis.html docs/audits/usability_evaluation_first_analysis.md docs/references/Fox_1980.pdf docs/references/dean_jett_1974.pdf docs/references/watson_1987.pdf docs/references/AUTOMATIC_PEAK_DETECTION.md docs/audits/baselines/dist_manifest_2026-09-06.json docs/audits/baselines/perf01_worker_2026-09-08.json docs/audits/baselines/perf02_profile_2026-09-21.md tests/e2e/driving_code/perf_profile.py tests/validation/driving_code/benchmark_fit_workers.py docs/onboarding.md docs/plans/cell_cycle_modeling_plan.md docs/plans/phasefinder_design.md docs/dependency-policy.md docs/document_inventory.html docs/module-import-graph.md docs/project-directory-tree.html docs/release-and-privacy.md help/index.html help/help-cell-cycle-accuracy.html help/help-cell-cycle-math-check.html help/help-getting-started.html help/help-metadata.html help/help-modeling.html help/help-plotting.html help/help-sessions.html help/help-statistics.html help/help-troubleshooting.html help/djf-model-validation.html help/result_validation.html help/tool_validation.html README.md vite.config.js docs/audits/master_checklist.md docs/audits/master_checklist_status.html
+git commit -m &quot;docs: first-analysis tutorial, scientific papers, baselines, and master checklist (DOC-06..08, PERF-03)&quot; 
+
+# --- Cluster 15: App shell DOM wiring for theme toggle, residual panel, and lone-peak UI ---
+git add index.html js/ui/dom.js js/plotting/render.js
+git commit -m &quot;feat(ui): integrate theme toggle, residual panel, and lone-peak UI into app shell (UI-12, UI-13, PEAK-02, OBS-01)&quot; </pre>
+    </div>
+
+    <section class="clusters-container" id="clustersList">
+      
+        <article class="cluster-card" id="cluster-1" data-cluster="1" data-type="refactor">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#1</span>
+              <span class="badge badge-refactor">refactor(ui)</span>
+              <h2>Retire mobile/tablet responsive layouts and accessibility-only code</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">26 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">CLEAN-05</span> <span class="task-pill">CLEAN-06</span> <span class="task-pill">READY-03</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Executes owner decisions CLEAN-05, CLEAN-06, and READY-03. PhaseFinder is explicitly scoped as a desktop scientific web application. This removes phone/tablet responsive stylesheet hacks, forced-colors and reduced-motion @media blocks, screen-reader announcers, and artificial modal focus traps while strictly preserving standard native HTML semantics, keyboard Escape handlers, and focus restoration.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-1')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-1"><code>refactor(ui): retire mobile/tablet responsive layouts and accessibility-only code (CLEAN-05, CLEAN-06, READY-03)
+
+- Remove css/responsive.css and prune phone/tablet media queries across stylesheets
+- Remove forced-colors and prefers-reduced-motion media blocks and reduced-motion JS
+- Remove screen-reader-only markup (aria-live regions, announcer elements, aria-sort)
+- Replace stateful ARIA selectors (aria-pressed, aria-invalid) with data attributes (data-active, data-invalid)
+- Simplify modal_focus.js to maintain Escape dismissal and focus restoration without background trapping
+- Remove axe-core dependency and delete tests/ci/test_contrast_tokens.py</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-1')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-1"><code>git rm css/responsive.css tests/ci/test_contrast_tokens.py
+git add css/base.css css/feedback.css css/help.css css/layout.css css/plot.css css/sidebar.css css/table.css package-lock.json js/ui/modal_focus.js js/ui/panels.js js/ui/panel_resize.js js/ui/column_remove.js js/ui/table_render.js js/ui/table_support.js js/ui/status_channels.js js/ui/compatibility.js js/ui/draggable_modal.js js/ui/cell_cycle_columns.js js/ui/hover_text.js js/plotting/plot_accessibility.js js/plotting/plot_export.js js/plotting/plot_toolbar.js js/plotting/axis_modal.js js/plotting/ridge_review.js
+git commit -m &quot;refactor(ui): retire mobile/tablet responsive layouts and accessibility-only code (CLEAN-05, CLEAN-06, READY-03)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (26)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="css/base.css">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/css/base.css" class="file-link" title="Open css/base.css">css/base.css</a>
+            </li>
+            
+
+            <li class="file-item" data-path="css/feedback.css">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/css/feedback.css" class="file-link" title="Open css/feedback.css">css/feedback.css</a>
+            </li>
+            
+
+            <li class="file-item" data-path="css/help.css">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/css/help.css" class="file-link" title="Open css/help.css">css/help.css</a>
+            </li>
+            
+
+            <li class="file-item" data-path="css/layout.css">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/css/layout.css" class="file-link" title="Open css/layout.css">css/layout.css</a>
+            </li>
+            
+
+            <li class="file-item" data-path="css/plot.css">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/css/plot.css" class="file-link" title="Open css/plot.css">css/plot.css</a>
+            </li>
+            
+
+            <li class="file-item" data-path="css/responsive.css">
+              <span class="file-status status-deleted">DEL</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/css/responsive.css" class="file-link" title="Open css/responsive.css">css/responsive.css</a>
+            </li>
+            
+
+            <li class="file-item" data-path="css/sidebar.css">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/css/sidebar.css" class="file-link" title="Open css/sidebar.css">css/sidebar.css</a>
+            </li>
+            
+
+            <li class="file-item" data-path="css/table.css">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/css/table.css" class="file-link" title="Open css/table.css">css/table.css</a>
+            </li>
+            
+
+            <li class="file-item" data-path="package-lock.json">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/package-lock.json" class="file-link" title="Open package-lock.json">package-lock.json</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_contrast_tokens.py">
+              <span class="file-status status-deleted">DEL</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_contrast_tokens.py" class="file-link" title="Open tests/ci/test_contrast_tokens.py">tests/ci/test_contrast_tokens.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/modal_focus.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/modal_focus.js" class="file-link" title="Open js/ui/modal_focus.js">js/ui/modal_focus.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/panels.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/panels.js" class="file-link" title="Open js/ui/panels.js">js/ui/panels.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/panel_resize.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/panel_resize.js" class="file-link" title="Open js/ui/panel_resize.js">js/ui/panel_resize.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/column_remove.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/column_remove.js" class="file-link" title="Open js/ui/column_remove.js">js/ui/column_remove.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/table_render.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/table_render.js" class="file-link" title="Open js/ui/table_render.js">js/ui/table_render.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/table_support.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/table_support.js" class="file-link" title="Open js/ui/table_support.js">js/ui/table_support.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/status_channels.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/status_channels.js" class="file-link" title="Open js/ui/status_channels.js">js/ui/status_channels.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/compatibility.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/compatibility.js" class="file-link" title="Open js/ui/compatibility.js">js/ui/compatibility.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/draggable_modal.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/draggable_modal.js" class="file-link" title="Open js/ui/draggable_modal.js">js/ui/draggable_modal.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/cell_cycle_columns.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/cell_cycle_columns.js" class="file-link" title="Open js/ui/cell_cycle_columns.js">js/ui/cell_cycle_columns.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/hover_text.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/hover_text.js" class="file-link" title="Open js/ui/hover_text.js">js/ui/hover_text.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/plot_accessibility.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/plot_accessibility.js" class="file-link" title="Open js/plotting/plot_accessibility.js">js/plotting/plot_accessibility.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/plot_export.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/plot_export.js" class="file-link" title="Open js/plotting/plot_export.js">js/plotting/plot_export.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/plot_toolbar.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/plot_toolbar.js" class="file-link" title="Open js/plotting/plot_toolbar.js">js/plotting/plot_toolbar.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/axis_modal.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/axis_modal.js" class="file-link" title="Open js/plotting/axis_modal.js">js/plotting/axis_modal.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/ridge_review.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/ridge_review.js" class="file-link" title="Open js/plotting/ridge_review.js">js/plotting/ridge_review.js</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-2" data-cluster="2" data-type="feat">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#2</span>
+              <span class="badge badge-feat">feat(ui)</span>
+              <h2>Light / Dark / System theme switcher</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">3 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">UI-12</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements UI-12. Introduces js/ui/theme.js managing light, dark, and OS system color schemes with localStorage persistence, toggles the root data-theme attribute, and dispatches plot color cache updates via refresh_plot_theme_colors in js/plotting/data.js and window.PhaseFinder.theme.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-2')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-2"><code>feat(ui): add theme switcher for light, dark, and system modes (UI-12)
+
+- Add js/ui/theme.js providing theme lifecycle, storage persistence, and events
+- Expose window.PhaseFinder.theme control and status API
+- Connect theme changes to refresh_plot_theme_colors() in js/plotting/data.js
+- Initialize theme during bootstrap in js/main.js</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-2')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-2"><code>git add js/ui/theme.js js/main.js js/plotting/data.js
+git commit -m &quot;feat(ui): add theme switcher for light, dark, and system modes (UI-12)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (3)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="js/ui/theme.js">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/theme.js" class="file-link" title="Open js/ui/theme.js">js/ui/theme.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/main.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/main.js" class="file-link" title="Open js/main.js">js/main.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/data.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/data.js" class="file-link" title="Open js/plotting/data.js">js/plotting/data.js</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-3" data-cluster="3" data-type="feat">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#3</span>
+              <span class="badge badge-feat">feat(brand)</span>
+              <h2>Brand guidelines and automated asset verification</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">3 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">BRAND-01</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements BRAND-01. Documents master brand assets and geometry rules (logo dimensions 1593x331px, 4.81 aspect ratio, clearspace rules, favicon matrix). Adds tests/ci/test_brand_assets.py to statically assert brand image dimensions and header styling across app and help centers.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-3')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-3"><code>feat(brand): establish brand assets guidelines and dimension validation (BRAND-01)
+
+- Document logo dimensions, clearspace, and touch icon specs in docs/brand-guidelines.md
+- Add assets/img/README.md cataloging logo and favicon requirements
+- Add tests/ci/test_brand_assets.py to assert PNG integrity and CSS header logo constraints</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-3')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-3"><code>git add docs/brand-guidelines.md assets/img/README.md tests/ci/test_brand_assets.py
+git commit -m &quot;feat(brand): establish brand assets guidelines and dimension validation (BRAND-01)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (3)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="docs/brand-guidelines.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/brand-guidelines.md" class="file-link" title="Open docs/brand-guidelines.md">docs/brand-guidelines.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="assets/img/README.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/assets/img/README.md" class="file-link" title="Open assets/img/README.md">assets/img/README.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_brand_assets.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_brand_assets.py" class="file-link" title="Open tests/ci/test_brand_assets.py">tests/ci/test_brand_assets.py</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-4" data-cluster="4" data-type="feat">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#4</span>
+              <span class="badge badge-feat">feat(plotting)</span>
+              <h2>Histogram residual strip panel with Pearson normalization</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">2 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">UI-13</span> <span class="task-pill">FEAT-01</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements UI-13 and FEAT-01. Adds js/plotting/residual_panel.js rendering a stacked residual panel beneath the main histogram aligning with bin coordinates. Supports switching between Pearson normalized (÷√fitted) residuals with ±2 outlier boundaries and raw residuals.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-4')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-4"><code>feat(plotting): histogram residual strip panel with Pearson normalization (UI-13, FEAT-01)
+
+- Add js/plotting/residual_panel.js to render per-sample residual tracks below the histogram
+- Support toggling between Pearson residuals and raw counts
+- Render outlier threshold bands at |z| &gt; 2 with distinct color cues
+- Connect curve tooltip helpers to residual series</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-4')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-4"><code>git add js/plotting/residual_panel.js js/plotting/curve_tooltip.js
+git commit -m &quot;feat(plotting): histogram residual strip panel with Pearson normalization (UI-13, FEAT-01)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (2)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="js/plotting/residual_panel.js">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/residual_panel.js" class="file-link" title="Open js/plotting/residual_panel.js">js/plotting/residual_panel.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/curve_tooltip.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/curve_tooltip.js" class="file-link" title="Open js/plotting/curve_tooltip.js">js/plotting/curve_tooltip.js</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-5" data-cluster="5" data-type="feat">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#5</span>
+              <span class="badge badge-feat">feat(scientific)</span>
+              <h2>Typed result contracts and centralized policy thresholds</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">11 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">MAINT-01</span> <span class="task-pill">MAINT-02</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements MAINT-01 and MAINT-02. Replaces ad-hoc constants across QC, constraints, and resampling with an immutable POLICY_THRESHOLDS catalog documenting numerical values, units, and rationale. Formalizes result contracts with JSDoc @typedefs, runtime validators, and CI assertion gates.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-5')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-5"><code>feat(scientific): formalize typed result contracts and policy thresholds (MAINT-01, MAINT-02)
+
+- Add js/analysis/policy_thresholds.js centralizing scientific QC/modeling thresholds
+- Document all thresholds, units, and rationale in docs/policy-thresholds-inventory.md
+- Add tests/ci/test_policy_thresholds.py testing threshold boundaries and transitions
+- Upgrade js/analysis/cell_cycle/result_contract.js with JSDoc typedefs and shape assertions
+- Add tests/ci/test_result_contracts.py asserting result contract structural conformity
+- Wire policy thresholds into constraint audit, resampling, binning, QC, and TOML export</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-5')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-5"><code>git add js/analysis/policy_thresholds.js docs/policy-thresholds-inventory.md tests/ci/test_policy_thresholds.py js/analysis/cell_cycle/result_contract.js docs/scientific-result-contract.md tests/ci/test_result_contracts.py js/analysis/cell_cycle/constraint_audit.js js/analysis/cell_cycle/resampling.js js/analysis/cell_cycle/bin_settings_sync.js js/analysis/qc/acquisition_time_qc.js js/session/toml_io.js
+git commit -m &quot;feat(scientific): formalize typed result contracts and policy thresholds (MAINT-01, MAINT-02)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (11)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="js/analysis/policy_thresholds.js">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/policy_thresholds.js" class="file-link" title="Open js/analysis/policy_thresholds.js">js/analysis/policy_thresholds.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/policy-thresholds-inventory.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/policy-thresholds-inventory.md" class="file-link" title="Open docs/policy-thresholds-inventory.md">docs/policy-thresholds-inventory.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_policy_thresholds.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_policy_thresholds.py" class="file-link" title="Open tests/ci/test_policy_thresholds.py">tests/ci/test_policy_thresholds.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/result_contract.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/result_contract.js" class="file-link" title="Open js/analysis/cell_cycle/result_contract.js">js/analysis/cell_cycle/result_contract.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/scientific-result-contract.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/scientific-result-contract.md" class="file-link" title="Open docs/scientific-result-contract.md">docs/scientific-result-contract.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_result_contracts.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_result_contracts.py" class="file-link" title="Open tests/ci/test_result_contracts.py">tests/ci/test_result_contracts.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/constraint_audit.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/constraint_audit.js" class="file-link" title="Open js/analysis/cell_cycle/constraint_audit.js">js/analysis/cell_cycle/constraint_audit.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/resampling.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/resampling.js" class="file-link" title="Open js/analysis/cell_cycle/resampling.js">js/analysis/cell_cycle/resampling.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/bin_settings_sync.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/bin_settings_sync.js" class="file-link" title="Open js/analysis/cell_cycle/bin_settings_sync.js">js/analysis/cell_cycle/bin_settings_sync.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/qc/acquisition_time_qc.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/qc/acquisition_time_qc.js" class="file-link" title="Open js/analysis/qc/acquisition_time_qc.js">js/analysis/qc/acquisition_time_qc.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/session/toml_io.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/session/toml_io.js" class="file-link" title="Open js/session/toml_io.js">js/session/toml_io.js</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-6" data-cluster="6" data-type="feat">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#6</span>
+              <span class="badge badge-feat">feat(cell-cycle)</span>
+              <h2>Bounded worker pool, ratio bounds tuning, and Watson warnings</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">24 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">MODEL-10</span> <span class="task-pill">MODEL-11</span> <span class="task-pill">MODEL-12</span> <span class="task-pill">PERF-01</span> <span class="task-pill">GATE-03</span> <span class="task-pill">GATE-04</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements MODEL-10..12, PERF-01, and GATE-03/04. Widens default fitted G2:G1 ratio range to [1.75, 2.25]; bumps model versions to 1.1.0; adds WATSON_S_COLLAPSED diagnostic warning; caches S-phase bin geometry quadrature; replaces worker dispatcher with bounded pool running 1 fit per worker with zero UI thread fallback.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-6')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-6"><code>feat(cell-cycle): bounded worker pool, ratio bounds tuning, and Watson warnings (MODEL-10..12, PERF-01, GATE-03/04)
+
+- Widen default fitted G2:G1 ratio range to [1.75, 2.25] across DJ, DJF, and Watson
+- Bump Dean-Jett, Dean-Jett-Fox, and Watson Classic model versions to 1.1.0
+- Add WATSON_S_COLLAPSED quality warning when converged fits yield &lt;1% S phase
+- Optimize convolved S-phase calculation with cached_bin_geometry()
+- Re-architect fit_client.js and fit_worker.js to enforce bounded concurrency without UI fallback
+- Update unit and integration test suites for worker orchestration and model contracts</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-6')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-6"><code>git add js/analysis/cell_cycle/models/dean_jett.js js/analysis/cell_cycle/models/dean_jett_fox.js js/analysis/cell_cycle/models/watson_classic.js js/analysis/cell_cycle/models/shared.js js/analysis/math/gaussian_bin_mass.js js/analysis/math/lm_solver.js js/analysis/cell_cycle/fit_client.js js/analysis/cell_cycle/fit_worker.js js/analysis/cell_cycle/modeling_state.js js/analysis/cell_cycle/modeling_ui.js js/analysis/cell_cycle/cloccs_client.js tests/unit/driving_code/unit_tests_cell_cycle_dean_jett.py tests/unit/driving_code/unit_tests_cell_cycle_watson_classic.py tests/unit/driving_code/unit_tests_cell_cycle_worker.py tests/unit/driving_code/unit_tests_cell_cycle_fit_orchestration.py tests/unit/driving_code/unit_tests_cell_cycle_modeling_state.py tests/unit/driving_code/unit_tests_cell_cycle_registry.py tests/unit/driving_code/unit_tests_djf_pipeline.py tests/unit/driving_code/unit_tests_djf_shared.py tests/unit/driving_code/unit_tests_cloccs.py tests/unit/driving_code/unit_tests_domain_sensitivity.py tests/unit/driving_code/unit_tests_gate_contract.py tests/ci/test_gate_entry_points.py tests/unit/test_harness.html
+git commit -m &quot;feat(cell-cycle): bounded worker pool, ratio bounds tuning, and Watson warnings (MODEL-10..12, PERF-01, GATE-03/04)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (24)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="js/analysis/cell_cycle/models/dean_jett.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/models/dean_jett.js" class="file-link" title="Open js/analysis/cell_cycle/models/dean_jett.js">js/analysis/cell_cycle/models/dean_jett.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/models/dean_jett_fox.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/models/dean_jett_fox.js" class="file-link" title="Open js/analysis/cell_cycle/models/dean_jett_fox.js">js/analysis/cell_cycle/models/dean_jett_fox.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/models/watson_classic.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/models/watson_classic.js" class="file-link" title="Open js/analysis/cell_cycle/models/watson_classic.js">js/analysis/cell_cycle/models/watson_classic.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/models/shared.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/models/shared.js" class="file-link" title="Open js/analysis/cell_cycle/models/shared.js">js/analysis/cell_cycle/models/shared.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/math/gaussian_bin_mass.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/math/gaussian_bin_mass.js" class="file-link" title="Open js/analysis/math/gaussian_bin_mass.js">js/analysis/math/gaussian_bin_mass.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/math/lm_solver.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/math/lm_solver.js" class="file-link" title="Open js/analysis/math/lm_solver.js">js/analysis/math/lm_solver.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/fit_client.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/fit_client.js" class="file-link" title="Open js/analysis/cell_cycle/fit_client.js">js/analysis/cell_cycle/fit_client.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/fit_worker.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/fit_worker.js" class="file-link" title="Open js/analysis/cell_cycle/fit_worker.js">js/analysis/cell_cycle/fit_worker.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/modeling_state.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/modeling_state.js" class="file-link" title="Open js/analysis/cell_cycle/modeling_state.js">js/analysis/cell_cycle/modeling_state.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/modeling_ui.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/modeling_ui.js" class="file-link" title="Open js/analysis/cell_cycle/modeling_ui.js">js/analysis/cell_cycle/modeling_ui.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/cloccs_client.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/cloccs_client.js" class="file-link" title="Open js/analysis/cell_cycle/cloccs_client.js">js/analysis/cell_cycle/cloccs_client.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cell_cycle_dean_jett.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cell_cycle_dean_jett.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cell_cycle_dean_jett.py">tests/unit/driving_code/unit_tests_cell_cycle_dean_jett.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cell_cycle_watson_classic.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cell_cycle_watson_classic.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cell_cycle_watson_classic.py">tests/unit/driving_code/unit_tests_cell_cycle_watson_classic.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cell_cycle_worker.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cell_cycle_worker.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cell_cycle_worker.py">tests/unit/driving_code/unit_tests_cell_cycle_worker.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cell_cycle_fit_orchestration.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cell_cycle_fit_orchestration.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cell_cycle_fit_orchestration.py">tests/unit/driving_code/unit_tests_cell_cycle_fit_orchestration.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cell_cycle_modeling_state.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cell_cycle_modeling_state.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cell_cycle_modeling_state.py">tests/unit/driving_code/unit_tests_cell_cycle_modeling_state.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cell_cycle_registry.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cell_cycle_registry.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cell_cycle_registry.py">tests/unit/driving_code/unit_tests_cell_cycle_registry.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_djf_pipeline.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_djf_pipeline.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_djf_pipeline.py">tests/unit/driving_code/unit_tests_djf_pipeline.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_djf_shared.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_djf_shared.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_djf_shared.py">tests/unit/driving_code/unit_tests_djf_shared.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cloccs.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cloccs.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cloccs.py">tests/unit/driving_code/unit_tests_cloccs.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_domain_sensitivity.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_domain_sensitivity.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_domain_sensitivity.py">tests/unit/driving_code/unit_tests_domain_sensitivity.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_gate_contract.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_gate_contract.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_gate_contract.py">tests/unit/driving_code/unit_tests_gate_contract.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_gate_entry_points.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_gate_entry_points.py" class="file-link" title="Open tests/ci/test_gate_entry_points.py">tests/ci/test_gate_entry_points.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/test_harness.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/test_harness.html" class="file-link" title="Open tests/unit/test_harness.html">tests/unit/test_harness.html</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-7" data-cluster="7" data-type="feat">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#7</span>
+              <span class="badge badge-feat">feat(peaks)</span>
+              <h2>Lone-peak review alert and wider detection ratio range</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">6 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">PEAK-02</span> <span class="task-pill">AMBIG-01</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements PEAK-02, AMBIG-01, and owner decision D2. Widens peak detection ratio range to 1.65–2.35. When a single peak is detected without a clear partner, PhaseFinder marks it as unassigned and displays an alert requesting user assignment (G1 vs G2) rather than making an arbitrary automated assumption.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-7')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-7"><code>feat(peaks): lone-peak disambiguation alert and wider ratio detection (PEAK-02, AMBIG-01)
+
+- Widen peak-detection candidate G2:G1 ratio range to 1.65–2.35
+- Mark isolated peaks as single_peak_unassigned instead of defaulting to G1
+- Add peak-review UI controls to allow explicit user assignment to G1 or G2
+- Adjust peak region overlays and histogram preparation for manual single-peak reviews</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-7')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-7"><code>git add js/analysis/cell_cycle/peak_detection.js js/analysis/cell_cycle/peak_review_ui.js js/plotting/peak_region_overlay.js js/plotting/histogram_prep.js tests/unit/driving_code/unit_tests_cell_cycle_peak_detection.py tests/validation/driving_code/verify_peak_width.mjs
+git commit -m &quot;feat(peaks): lone-peak disambiguation alert and wider ratio detection (PEAK-02, AMBIG-01)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (6)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="js/analysis/cell_cycle/peak_detection.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/peak_detection.js" class="file-link" title="Open js/analysis/cell_cycle/peak_detection.js">js/analysis/cell_cycle/peak_detection.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/peak_review_ui.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/peak_review_ui.js" class="file-link" title="Open js/analysis/cell_cycle/peak_review_ui.js">js/analysis/cell_cycle/peak_review_ui.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/peak_region_overlay.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/peak_region_overlay.js" class="file-link" title="Open js/plotting/peak_region_overlay.js">js/plotting/peak_region_overlay.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/histogram_prep.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/histogram_prep.js" class="file-link" title="Open js/plotting/histogram_prep.js">js/plotting/histogram_prep.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cell_cycle_peak_detection.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cell_cycle_peak_detection.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cell_cycle_peak_detection.py">tests/unit/driving_code/unit_tests_cell_cycle_peak_detection.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/verify_peak_width.mjs">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/verify_peak_width.mjs" class="file-link" title="Open tests/validation/driving_code/verify_peak_width.mjs">tests/validation/driving_code/verify_peak_width.mjs</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-8" data-cluster="8" data-type="perf">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#8</span>
+              <span class="badge badge-perf">perf(qc)</span>
+              <h2>Peak-tracking Time QC downsampling and Cell Gate measurement</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">9 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">QC-07</span> <span class="task-pill">QC-08</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements QC-07 and QC-08. Accelerates peak-tracking Time QC on high-event files (&gt;500,000 events) by downsampling time slices while preserving drift detection accuracy. Adds tests/validation/driving_code/measure_flowjo_cell_gate.py evaluating Cell Gate retention against FlowJo reference data.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-8')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-8"><code>perf(qc): peak-tracking Time QC optimizations and Cell Gate measurement (QC-07, QC-08)
+
+- Accelerate peak_tracking_time_qc.js for large (&gt;500k event) files via temporal subsampling
+- Optimize Time QC diagnostic plot rendering and state transitions
+- Add measure_flowjo_cell_gate.py script measuring Cell Gate impacts on reference samples
+- Expand unit and fixture verification tests for peak tracking QC</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-8')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-8"><code>git add js/analysis/qc/peak_tracking_time_qc.js js/analysis/qc/time_qc_diagnostic_plot.js js/analysis/pipeline/cell_cycle_pipeline.js js/analysis/pipeline/pipeline_state.js js/analysis/pipeline/pipeline_ui.js js/analysis/gating/scatter_modal.js tests/unit/driving_code/unit_tests_time_qc_peak_tracking.py tests/validation/validation_test_data/synthetic_fcs/verify_qc_calibration_fixtures.mjs tests/validation/driving_code/measure_flowjo_cell_gate.py
+git commit -m &quot;perf(qc): peak-tracking Time QC optimizations and Cell Gate measurement (QC-07, QC-08)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (9)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="js/analysis/qc/peak_tracking_time_qc.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/qc/peak_tracking_time_qc.js" class="file-link" title="Open js/analysis/qc/peak_tracking_time_qc.js">js/analysis/qc/peak_tracking_time_qc.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/qc/time_qc_diagnostic_plot.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/qc/time_qc_diagnostic_plot.js" class="file-link" title="Open js/analysis/qc/time_qc_diagnostic_plot.js">js/analysis/qc/time_qc_diagnostic_plot.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/pipeline/cell_cycle_pipeline.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/pipeline/cell_cycle_pipeline.js" class="file-link" title="Open js/analysis/pipeline/cell_cycle_pipeline.js">js/analysis/pipeline/cell_cycle_pipeline.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/pipeline/pipeline_state.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/pipeline/pipeline_state.js" class="file-link" title="Open js/analysis/pipeline/pipeline_state.js">js/analysis/pipeline/pipeline_state.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/pipeline/pipeline_ui.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/pipeline/pipeline_ui.js" class="file-link" title="Open js/analysis/pipeline/pipeline_ui.js">js/analysis/pipeline/pipeline_ui.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/gating/scatter_modal.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/gating/scatter_modal.js" class="file-link" title="Open js/analysis/gating/scatter_modal.js">js/analysis/gating/scatter_modal.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_time_qc_peak_tracking.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_time_qc_peak_tracking.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_time_qc_peak_tracking.py">tests/unit/driving_code/unit_tests_time_qc_peak_tracking.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/validation_test_data/synthetic_fcs/verify_qc_calibration_fixtures.mjs">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/validation_test_data/synthetic_fcs/verify_qc_calibration_fixtures.mjs" class="file-link" title="Open tests/validation/validation_test_data/synthetic_fcs/verify_qc_calibration_fixtures.mjs">tests/validation/validation_test_data/synthetic_fcs/verify_qc_calibration_fixtures.mjs</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/measure_flowjo_cell_gate.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/measure_flowjo_cell_gate.py" class="file-link" title="Open tests/validation/driving_code/measure_flowjo_cell_gate.py">tests/validation/driving_code/measure_flowjo_cell_gate.py</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-9" data-cluster="9" data-type="feat">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#9</span>
+              <span class="badge badge-feat">feat(session)</span>
+              <h2>Model version drift checks, warning gates, and schema validation</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">11 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">STATE-01</span> <span class="task-pill">REL-05</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements STATE-01 and REL-05. Adds preflight check scripts/check-model-version.cjs and test tests/ci/test_model_version_warning.py to prevent unbumped model math changes or missing changelog entries. Enforces session schema validation and warns users when reloaded fits originated from an older model version.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-9')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-9"><code>feat(session): model version drift detection and schema enforcement (STATE-01, REL-05)
+
+- Add scripts/check-model-version.cjs to preflight to warn on unbumped model math
+- Add tests/ci/test_model_version_warning.py verifying changelog and version alerts
+- Detect model version drift in restored sessions in js/session/modeling_session.js
+- Strengthen schema validation in js/session/session_schema.js and export payload typing
+- Update session and table unit tests</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-9')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-9"><code>git add scripts/check-model-version.cjs scripts/preflight.cjs tests/ci/test_model_version_warning.py js/session/core.js js/session/modeling_session.js js/session/session_schema.js js/analysis/cell_cycle/export.js tests/unit/driving_code/unit_tests_session.py tests/unit/driving_code/unit_tests_cell_cycle_export.py tests/unit/driving_code/unit_tests_table.py tests/unit/driving_code/run_unit_tests.py
+git commit -m &quot;feat(session): model version drift detection and schema enforcement (STATE-01, REL-05)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (11)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="scripts/check-model-version.cjs">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/check-model-version.cjs" class="file-link" title="Open scripts/check-model-version.cjs">scripts/check-model-version.cjs</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/preflight.cjs">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/preflight.cjs" class="file-link" title="Open scripts/preflight.cjs">scripts/preflight.cjs</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_model_version_warning.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_model_version_warning.py" class="file-link" title="Open tests/ci/test_model_version_warning.py">tests/ci/test_model_version_warning.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/session/core.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/session/core.js" class="file-link" title="Open js/session/core.js">js/session/core.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/session/modeling_session.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/session/modeling_session.js" class="file-link" title="Open js/session/modeling_session.js">js/session/modeling_session.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/session/session_schema.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/session/session_schema.js" class="file-link" title="Open js/session/session_schema.js">js/session/session_schema.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/analysis/cell_cycle/export.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/analysis/cell_cycle/export.js" class="file-link" title="Open js/analysis/cell_cycle/export.js">js/analysis/cell_cycle/export.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_session.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_session.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_session.py">tests/unit/driving_code/unit_tests_session.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_cell_cycle_export.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_cell_cycle_export.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_cell_cycle_export.py">tests/unit/driving_code/unit_tests_cell_cycle_export.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/unit_tests_table.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/unit_tests_table.py" class="file-link" title="Open tests/unit/driving_code/unit_tests_table.py">tests/unit/driving_code/unit_tests_table.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/unit/driving_code/run_unit_tests.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/unit/driving_code/run_unit_tests.py" class="file-link" title="Open tests/unit/driving_code/run_unit_tests.py">tests/unit/driving_code/run_unit_tests.py</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-10" data-cluster="10" data-type="test">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#10</span>
+              <span class="badge badge-test">test(validation)</span>
+              <h2>FlowJo cross-tool comparison harness, sweeps, and scoring</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">14 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">VALID-01</span> <span class="task-pill">VALID-02</span> <span class="task-pill">VALID-03</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements VALID-01, VALID-02, and VALID-03. Comprehensive tooling for cross-tool validation: audit documentation recording FlowJo reference configuration, sweep automation scripts, cross-tool report generator, scoring tests, and updated validation runner.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-10')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-10"><code>test(validation): FlowJo comparison harness, sweep runner, and scoring tools (VALID-01..03)
+
+- Document FlowJo reference configuration in docs/audits/flowjo_reference_settings_2026_09_23.md
+- Add flowjo_sweep runner scripts, inputs generator, export parser, and runbook
+- Add flowjo_cross_tool_report.py and test_flowjo_scoring.py scoring utilities
+- Update validation_tests.py comparison matrix and report layout</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-10')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-10"><code>git add docs/audits/flowjo_reference_settings_2026_09_23.md docs/audits/evidence/flowjo_reference_2026_09_23 tests/validation/driving_code/flowjo_cross_tool_report.py tests/validation/driving_code/flowjo_sweep_RUNBOOK.md tests/validation/driving_code/flowjo_sweep_compare.py tests/validation/driving_code/flowjo_sweep_generate_inputs.py tests/validation/driving_code/flowjo_sweep_parse_export.py tests/validation/driving_code/flowjo_sweep_run.bat tests/validation/driving_code/flowjo_sweep_run.ps1 tests/validation/driving_code/test_flowjo_scoring.py tests/validation/driving_code/generate_flowjo_djf_reference.py tests/validation/driving_code/validation_tests.py tests/validation/validation_test_data/external_fcs/manifest.json tests/validation/validation_test_data/synthetic_fcs/benchmark.html
+git commit -m &quot;test(validation): FlowJo comparison harness, sweep runner, and scoring tools (VALID-01..03)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (14)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="docs/audits/flowjo_reference_settings_2026_09_23.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/flowjo_reference_settings_2026_09_23.md" class="file-link" title="Open docs/audits/flowjo_reference_settings_2026_09_23.md">docs/audits/flowjo_reference_settings_2026_09_23.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/evidence/flowjo_reference_2026_09_23">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/evidence/flowjo_reference_2026_09_23" class="file-link" title="Open docs/audits/evidence/flowjo_reference_2026_09_23">docs/audits/evidence/flowjo_reference_2026_09_23</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/flowjo_cross_tool_report.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/flowjo_cross_tool_report.py" class="file-link" title="Open tests/validation/driving_code/flowjo_cross_tool_report.py">tests/validation/driving_code/flowjo_cross_tool_report.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/flowjo_sweep_RUNBOOK.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/flowjo_sweep_RUNBOOK.md" class="file-link" title="Open tests/validation/driving_code/flowjo_sweep_RUNBOOK.md">tests/validation/driving_code/flowjo_sweep_RUNBOOK.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/flowjo_sweep_compare.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/flowjo_sweep_compare.py" class="file-link" title="Open tests/validation/driving_code/flowjo_sweep_compare.py">tests/validation/driving_code/flowjo_sweep_compare.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/flowjo_sweep_generate_inputs.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/flowjo_sweep_generate_inputs.py" class="file-link" title="Open tests/validation/driving_code/flowjo_sweep_generate_inputs.py">tests/validation/driving_code/flowjo_sweep_generate_inputs.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/flowjo_sweep_parse_export.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/flowjo_sweep_parse_export.py" class="file-link" title="Open tests/validation/driving_code/flowjo_sweep_parse_export.py">tests/validation/driving_code/flowjo_sweep_parse_export.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/flowjo_sweep_run.bat">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/flowjo_sweep_run.bat" class="file-link" title="Open tests/validation/driving_code/flowjo_sweep_run.bat">tests/validation/driving_code/flowjo_sweep_run.bat</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/flowjo_sweep_run.ps1">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/flowjo_sweep_run.ps1" class="file-link" title="Open tests/validation/driving_code/flowjo_sweep_run.ps1">tests/validation/driving_code/flowjo_sweep_run.ps1</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/test_flowjo_scoring.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/test_flowjo_scoring.py" class="file-link" title="Open tests/validation/driving_code/test_flowjo_scoring.py">tests/validation/driving_code/test_flowjo_scoring.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/generate_flowjo_djf_reference.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/generate_flowjo_djf_reference.py" class="file-link" title="Open tests/validation/driving_code/generate_flowjo_djf_reference.py">tests/validation/driving_code/generate_flowjo_djf_reference.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/validation_tests.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/validation_tests.py" class="file-link" title="Open tests/validation/driving_code/validation_tests.py">tests/validation/driving_code/validation_tests.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/validation_test_data/external_fcs/manifest.json">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/validation_test_data/external_fcs/manifest.json" class="file-link" title="Open tests/validation/validation_test_data/external_fcs/manifest.json">tests/validation/validation_test_data/external_fcs/manifest.json</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/validation_test_data/synthetic_fcs/benchmark.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/validation_test_data/synthetic_fcs/benchmark.html" class="file-link" title="Open tests/validation/validation_test_data/synthetic_fcs/benchmark.html">tests/validation/validation_test_data/synthetic_fcs/benchmark.html</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-11" data-cluster="11" data-type="ci">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#11</span>
+              <span class="badge badge-ci">ci</span>
+              <h2>CI metrics tracking, candidate provenance diffing, and staging deploy</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">12 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">CI-05</span> <span class="task-pill">TEST-02</span> <span class="task-pill">BROWSER-01</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements CI-05, TEST-02, and BROWSER-01. Automatically parses and records CI duration, flakiness, and browser failure trends into GitHub Step Summaries; compares base vs candidate dist build provenance and artifact sizes in PR security checks; adds a dedicated staging deployment job in deploy-release.yml; drops Brave from browser matrix per owner decision D3.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-11')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-11"><code>ci: CI duration/flake metrics tracking, dist provenance verification, and staging deploy (CI-05, TEST-02, BROWSER-01)
+
+- Add scripts/track_ci_metrics.py reporting run duration, flakes, and browser metrics
+- Add scripts/verify_provenance_comparison.py comparing base vs candidate dist provenance
+- Add deploy-staging workflow target in deploy-release.yml for Cloudflare Pages
+- Remove Brave from browser compatibility matrix in browser-compatibility.yml
+- Add tests/ci unit tests for CI metric tracking and provenance verification</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-11')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-11"><code>git add .github/workflows/browser-compatibility.yml .github/workflows/deploy-release.yml .github/workflows/security.yml scripts/track_ci_metrics.py tests/ci/test_track_ci_metrics.py scripts/verify_provenance_comparison.py tests/ci/test_verify_provenance_comparison.py scripts/generate-provenance.cjs scripts/check-privacy.cjs package.json tests/ci/test_compatibility_evidence.py tests/e2e/driving_code/compatibility_evidence.py
+git commit -m &quot;ci: CI duration/flake metrics tracking, dist provenance verification, and staging deploy (CI-05, TEST-02, BROWSER-01)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (12)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path=".github/workflows/browser-compatibility.yml">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/.github/workflows/browser-compatibility.yml" class="file-link" title="Open .github/workflows/browser-compatibility.yml">.github/workflows/browser-compatibility.yml</a>
+            </li>
+            
+
+            <li class="file-item" data-path=".github/workflows/deploy-release.yml">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/.github/workflows/deploy-release.yml" class="file-link" title="Open .github/workflows/deploy-release.yml">.github/workflows/deploy-release.yml</a>
+            </li>
+            
+
+            <li class="file-item" data-path=".github/workflows/security.yml">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/.github/workflows/security.yml" class="file-link" title="Open .github/workflows/security.yml">.github/workflows/security.yml</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/track_ci_metrics.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/track_ci_metrics.py" class="file-link" title="Open scripts/track_ci_metrics.py">scripts/track_ci_metrics.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_track_ci_metrics.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_track_ci_metrics.py" class="file-link" title="Open tests/ci/test_track_ci_metrics.py">tests/ci/test_track_ci_metrics.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/verify_provenance_comparison.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/verify_provenance_comparison.py" class="file-link" title="Open scripts/verify_provenance_comparison.py">scripts/verify_provenance_comparison.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_verify_provenance_comparison.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_verify_provenance_comparison.py" class="file-link" title="Open tests/ci/test_verify_provenance_comparison.py">tests/ci/test_verify_provenance_comparison.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/generate-provenance.cjs">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/generate-provenance.cjs" class="file-link" title="Open scripts/generate-provenance.cjs">scripts/generate-provenance.cjs</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/check-privacy.cjs">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/check-privacy.cjs" class="file-link" title="Open scripts/check-privacy.cjs">scripts/check-privacy.cjs</a>
+            </li>
+            
+
+            <li class="file-item" data-path="package.json">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/package.json" class="file-link" title="Open package.json">package.json</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_compatibility_evidence.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_compatibility_evidence.py" class="file-link" title="Open tests/ci/test_compatibility_evidence.py">tests/ci/test_compatibility_evidence.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/compatibility_evidence.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/compatibility_evidence.py" class="file-link" title="Open tests/e2e/driving_code/compatibility_evidence.py">tests/e2e/driving_code/compatibility_evidence.py</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-12" data-cluster="12" data-type="tooling">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#12</span>
+              <span class="badge badge-tooling">tooling</span>
+              <h2>Human intervention workflow CLI, blocker tracking, and status generator</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">11 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">HI-DATA</span> <span class="task-pill">HI-REFERENCE</span> <span class="task-pill">HI-EXPERT</span> <span class="task-pill">HI-DECIDE</span> <span class="task-pill">HI-RELEASE</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Supports systematic human intervention tracking across the 5 human roots (HI-DATA, HI-REFERENCE, HI-EXPERT, HI-DECIDE, HI-RELEASE). Adds checklist_task.py block subcommand and ownership validation, generates docs/audits/human_intervention_status.html, updates tracker scripts and template, and adds CI test coverage.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-12')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-12"><code>tooling: human intervention audit tracking, task blocking CLI, and checklist generator
+
+- Add block subcommand to scripts/checklist_task.py with model ownership guard
+- Add scripts/build_human_intervention_status.py and human_intervention_guide.md
+- Update scripts/build_checklist_status.py and tracker template to handle blocked tasks
+- Add tests/ci/test_checklist_block.py and test_check_documents.py
+- Add gap audit report in docs/audits/gap_audit_2026_10_03.html</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-12')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-12"><code>git add scripts/build_human_intervention_status.py docs/audits/human_intervention_guide.md docs/audits/human_intervention_status.html docs/audits/gap_audit_2026_10_03.html scripts/checklist_task.py scripts/build_checklist_status.py scripts/test_checklist_status.py docs/audits/checklist_status_template.html tests/ci/test_checklist_block.py tests/ci/test_check_documents.py scripts/check_documents.py
+git commit -m &quot;tooling: human intervention audit tracking, task blocking CLI, and checklist generator&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (11)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="scripts/build_human_intervention_status.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/build_human_intervention_status.py" class="file-link" title="Open scripts/build_human_intervention_status.py">scripts/build_human_intervention_status.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/human_intervention_guide.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/human_intervention_guide.md" class="file-link" title="Open docs/audits/human_intervention_guide.md">docs/audits/human_intervention_guide.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/human_intervention_status.html">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/human_intervention_status.html" class="file-link" title="Open docs/audits/human_intervention_status.html">docs/audits/human_intervention_status.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/gap_audit_2026_10_03.html">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/gap_audit_2026_10_03.html" class="file-link" title="Open docs/audits/gap_audit_2026_10_03.html">docs/audits/gap_audit_2026_10_03.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/checklist_task.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/checklist_task.py" class="file-link" title="Open scripts/checklist_task.py">scripts/checklist_task.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/build_checklist_status.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/build_checklist_status.py" class="file-link" title="Open scripts/build_checklist_status.py">scripts/build_checklist_status.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/test_checklist_status.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/test_checklist_status.py" class="file-link" title="Open scripts/test_checklist_status.py">scripts/test_checklist_status.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/checklist_status_template.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/checklist_status_template.html" class="file-link" title="Open docs/audits/checklist_status_template.html">docs/audits/checklist_status_template.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_checklist_block.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_checklist_block.py" class="file-link" title="Open tests/ci/test_checklist_block.py">tests/ci/test_checklist_block.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/ci/test_check_documents.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/ci/test_check_documents.py" class="file-link" title="Open tests/ci/test_check_documents.py">tests/ci/test_check_documents.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="scripts/check_documents.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/scripts/check_documents.py" class="file-link" title="Open scripts/check_documents.py">scripts/check_documents.py</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-13" data-cluster="13" data-type="test">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#13</span>
+              <span class="badge badge-test">test(e2e)</span>
+              <h2>Real browser model fitting suites and selector realignment</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">8 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">TEST-06</span> <span class="task-pill">TEST-07</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements TEST-06 and TEST-07. Adds automated end-to-end browser tests completing real fits across Dean-Jett, Dean-Jett-Fox, and Watson Classic models. Realigns E2E test suites with current data attributes and verifies lone-peak UI workflows.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-13')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-13"><code>test(e2e): real model fitting suites, lone-peak verification, and selector alignment (TEST-06, TEST-07)
+
+- Add browser tests completing real DJ, DJF, and Watson Classic fits (TEST-07)
+- Add lone-peak workflow verification test (TEST-06)
+- Realign selector bindings and test expectations across sidebar, table, pipeline, and plotting</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-13')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-13"><code>git add tests/e2e/driving_code/tests_modeling.py tests/e2e/driving_code/tests_plotting.py tests/e2e/driving_code/tests_pipeline.py tests/e2e/driving_code/tests_sidebar.py tests/e2e/driving_code/tests_metadata_table.py tests/e2e/driving_code/tests_reset.py tests/e2e/driving_code/drive_flow.py tests/e2e/driving_code/dist_smoke.py
+git commit -m &quot;test(e2e): real model fitting suites, lone-peak verification, and selector alignment (TEST-06, TEST-07)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (8)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="tests/e2e/driving_code/tests_modeling.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/tests_modeling.py" class="file-link" title="Open tests/e2e/driving_code/tests_modeling.py">tests/e2e/driving_code/tests_modeling.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/tests_plotting.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/tests_plotting.py" class="file-link" title="Open tests/e2e/driving_code/tests_plotting.py">tests/e2e/driving_code/tests_plotting.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/tests_pipeline.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/tests_pipeline.py" class="file-link" title="Open tests/e2e/driving_code/tests_pipeline.py">tests/e2e/driving_code/tests_pipeline.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/tests_sidebar.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/tests_sidebar.py" class="file-link" title="Open tests/e2e/driving_code/tests_sidebar.py">tests/e2e/driving_code/tests_sidebar.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/tests_metadata_table.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/tests_metadata_table.py" class="file-link" title="Open tests/e2e/driving_code/tests_metadata_table.py">tests/e2e/driving_code/tests_metadata_table.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/tests_reset.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/tests_reset.py" class="file-link" title="Open tests/e2e/driving_code/tests_reset.py">tests/e2e/driving_code/tests_reset.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/drive_flow.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/drive_flow.py" class="file-link" title="Open tests/e2e/driving_code/drive_flow.py">tests/e2e/driving_code/drive_flow.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/dist_smoke.py">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/dist_smoke.py" class="file-link" title="Open tests/e2e/driving_code/dist_smoke.py">tests/e2e/driving_code/dist_smoke.py</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-14" data-cluster="14" data-type="docs">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#14</span>
+              <span class="badge badge-docs">docs</span>
+              <h2>First-analysis tutorial, scientific papers, baselines, and master checklist</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">37 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">DOC-06</span> <span class="task-pill">DOC-07</span> <span class="task-pill">DOC-08</span> <span class="task-pill">PERF-03</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Implements DOC-06, DOC-07, DOC-08, and PERF-03. Adds first-analysis tutorial guide and usability evaluation; commits foundational papers (Fox 1980, Dean-Jett 1974, Watson 1987) and perf baselines; aligns all help pages with current desktop and peak workflows; updates CHANGELOG.md and generates current master_checklist_status.html.</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-14')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-14"><code>docs: first-analysis tutorial, scientific papers, baselines, and master checklist (DOC-06..08, PERF-03)
+
+- Add first-analysis onboarding walkthrough at help/help-first-analysis.html
+- Add docs/audits/usability_evaluation_first_analysis.md
+- Add original literature PDFs: Fox (1980), Dean &amp; Jett (1974), and Watson (1987)
+- Record performance baselines in docs/audits/baselines and benchmark_fit_workers.py
+- Reconcile Help pages to explain lone-peak workflows and remove obsolete mobile/a11y text
+- Update CHANGELOG.md and synchronize master_checklist_status.html</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-14')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-14"><code>git add CHANGELOG.md help/help-first-analysis.html docs/audits/usability_evaluation_first_analysis.md docs/references/Fox_1980.pdf docs/references/dean_jett_1974.pdf docs/references/watson_1987.pdf docs/references/AUTOMATIC_PEAK_DETECTION.md docs/audits/baselines/dist_manifest_2026-09-06.json docs/audits/baselines/perf01_worker_2026-09-08.json docs/audits/baselines/perf02_profile_2026-09-21.md tests/e2e/driving_code/perf_profile.py tests/validation/driving_code/benchmark_fit_workers.py docs/onboarding.md docs/plans/cell_cycle_modeling_plan.md docs/plans/phasefinder_design.md docs/dependency-policy.md docs/document_inventory.html docs/module-import-graph.md docs/project-directory-tree.html docs/release-and-privacy.md help/index.html help/help-cell-cycle-accuracy.html help/help-cell-cycle-math-check.html help/help-getting-started.html help/help-metadata.html help/help-modeling.html help/help-plotting.html help/help-sessions.html help/help-statistics.html help/help-troubleshooting.html help/djf-model-validation.html help/result_validation.html help/tool_validation.html README.md vite.config.js docs/audits/master_checklist.md docs/audits/master_checklist_status.html
+git commit -m &quot;docs: first-analysis tutorial, scientific papers, baselines, and master checklist (DOC-06..08, PERF-03)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (37)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="CHANGELOG.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/CHANGELOG.md" class="file-link" title="Open CHANGELOG.md">CHANGELOG.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-first-analysis.html">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-first-analysis.html" class="file-link" title="Open help/help-first-analysis.html">help/help-first-analysis.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/usability_evaluation_first_analysis.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/usability_evaluation_first_analysis.md" class="file-link" title="Open docs/audits/usability_evaluation_first_analysis.md">docs/audits/usability_evaluation_first_analysis.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/references/Fox_1980.pdf">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/references/Fox_1980.pdf" class="file-link" title="Open docs/references/Fox_1980.pdf">docs/references/Fox_1980.pdf</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/references/dean_jett_1974.pdf">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/references/dean_jett_1974.pdf" class="file-link" title="Open docs/references/dean_jett_1974.pdf">docs/references/dean_jett_1974.pdf</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/references/watson_1987.pdf">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/references/watson_1987.pdf" class="file-link" title="Open docs/references/watson_1987.pdf">docs/references/watson_1987.pdf</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/references/AUTOMATIC_PEAK_DETECTION.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/references/AUTOMATIC_PEAK_DETECTION.md" class="file-link" title="Open docs/references/AUTOMATIC_PEAK_DETECTION.md">docs/references/AUTOMATIC_PEAK_DETECTION.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/baselines/dist_manifest_2026-09-06.json">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/baselines/dist_manifest_2026-09-06.json" class="file-link" title="Open docs/audits/baselines/dist_manifest_2026-09-06.json">docs/audits/baselines/dist_manifest_2026-09-06.json</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/baselines/perf01_worker_2026-09-08.json">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/baselines/perf01_worker_2026-09-08.json" class="file-link" title="Open docs/audits/baselines/perf01_worker_2026-09-08.json">docs/audits/baselines/perf01_worker_2026-09-08.json</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/baselines/perf02_profile_2026-09-21.md">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/baselines/perf02_profile_2026-09-21.md" class="file-link" title="Open docs/audits/baselines/perf02_profile_2026-09-21.md">docs/audits/baselines/perf02_profile_2026-09-21.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/e2e/driving_code/perf_profile.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/e2e/driving_code/perf_profile.py" class="file-link" title="Open tests/e2e/driving_code/perf_profile.py">tests/e2e/driving_code/perf_profile.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="tests/validation/driving_code/benchmark_fit_workers.py">
+              <span class="file-status status-untracked">UNT</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/tests/validation/driving_code/benchmark_fit_workers.py" class="file-link" title="Open tests/validation/driving_code/benchmark_fit_workers.py">tests/validation/driving_code/benchmark_fit_workers.py</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/onboarding.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/onboarding.md" class="file-link" title="Open docs/onboarding.md">docs/onboarding.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/plans/cell_cycle_modeling_plan.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/plans/cell_cycle_modeling_plan.md" class="file-link" title="Open docs/plans/cell_cycle_modeling_plan.md">docs/plans/cell_cycle_modeling_plan.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/plans/phasefinder_design.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/plans/phasefinder_design.md" class="file-link" title="Open docs/plans/phasefinder_design.md">docs/plans/phasefinder_design.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/dependency-policy.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/dependency-policy.md" class="file-link" title="Open docs/dependency-policy.md">docs/dependency-policy.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/document_inventory.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/document_inventory.html" class="file-link" title="Open docs/document_inventory.html">docs/document_inventory.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/module-import-graph.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/module-import-graph.md" class="file-link" title="Open docs/module-import-graph.md">docs/module-import-graph.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/project-directory-tree.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/project-directory-tree.html" class="file-link" title="Open docs/project-directory-tree.html">docs/project-directory-tree.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/release-and-privacy.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/release-and-privacy.md" class="file-link" title="Open docs/release-and-privacy.md">docs/release-and-privacy.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/index.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/index.html" class="file-link" title="Open help/index.html">help/index.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-cell-cycle-accuracy.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-cell-cycle-accuracy.html" class="file-link" title="Open help/help-cell-cycle-accuracy.html">help/help-cell-cycle-accuracy.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-cell-cycle-math-check.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-cell-cycle-math-check.html" class="file-link" title="Open help/help-cell-cycle-math-check.html">help/help-cell-cycle-math-check.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-getting-started.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-getting-started.html" class="file-link" title="Open help/help-getting-started.html">help/help-getting-started.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-metadata.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-metadata.html" class="file-link" title="Open help/help-metadata.html">help/help-metadata.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-modeling.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-modeling.html" class="file-link" title="Open help/help-modeling.html">help/help-modeling.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-plotting.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-plotting.html" class="file-link" title="Open help/help-plotting.html">help/help-plotting.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-sessions.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-sessions.html" class="file-link" title="Open help/help-sessions.html">help/help-sessions.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-statistics.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-statistics.html" class="file-link" title="Open help/help-statistics.html">help/help-statistics.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/help-troubleshooting.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/help-troubleshooting.html" class="file-link" title="Open help/help-troubleshooting.html">help/help-troubleshooting.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/djf-model-validation.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/djf-model-validation.html" class="file-link" title="Open help/djf-model-validation.html">help/djf-model-validation.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/result_validation.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/result_validation.html" class="file-link" title="Open help/result_validation.html">help/result_validation.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="help/tool_validation.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/help/tool_validation.html" class="file-link" title="Open help/tool_validation.html">help/tool_validation.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="README.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/README.md" class="file-link" title="Open README.md">README.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="vite.config.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/vite.config.js" class="file-link" title="Open vite.config.js">vite.config.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/master_checklist.md">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/master_checklist.md" class="file-link" title="Open docs/audits/master_checklist.md">docs/audits/master_checklist.md</a>
+            </li>
+            
+
+            <li class="file-item" data-path="docs/audits/master_checklist_status.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/docs/audits/master_checklist_status.html" class="file-link" title="Open docs/audits/master_checklist_status.html">docs/audits/master_checklist_status.html</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+        <article class="cluster-card" id="cluster-15" data-cluster="15" data-type="feat">
+          <header class="card-header">
+            <div class="card-header-left">
+              <span class="cluster-index">#15</span>
+              <span class="badge badge-feat">feat(ui)</span>
+              <h2>App shell DOM wiring for theme toggle, residual panel, and lone-peak UI</h2>
+            </div>
+            <div class="card-header-right">
+              <span class="file-counter">3 files</span>
+            </div>
+          </header>
+
+          <div class="card-body">
+            <div class="meta-row">
+              <span class="meta-label">Checklist tasks:</span>
+              <div class="meta-tasks"><span class="task-pill">UI-12</span> <span class="task-pill">UI-13</span> <span class="task-pill">PEAK-02</span> <span class="task-pill">OBS-01</span></div>
+            </div>
+
+            <div class="section-block">
+              <h3>Rationale &amp; Scope</h3>
+              <p>Connects the new UI components into the root document and primary render loop: adds status-bar #theme_toggle button (Cluster 2), adds #residual_panel DOM structure and triggers render_residual_panel() inside render_density_plot() (Cluster 4), adds lone-peak alert elements and assignment buttons (Cluster 7), and adds global uncaught error and unhandled rejection status banner (OBS-01).</p>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Proposed Conventional Commit</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'commit-msg-15')">Copy Message</button>
+              </div>
+              <pre class="code-box" id="commit-msg-15"><code>feat(ui): integrate theme toggle, residual panel, and lone-peak UI into app shell (UI-12, UI-13, PEAK-02, OBS-01)
+
+- Add status-bar #theme_toggle button and bindings
+- Add #residual_panel container to index.html and trigger render_residual_panel() in render.js
+- Add lone-peak warning alert and manual G1/G2 assignment buttons
+- Add uncaught error and unhandled rejection diagnostic banner (OBS-01)
+- Export newly wired elements in js/ui/dom.js</code></pre>
+            </div>
+
+            <div class="section-block">
+              <div class="block-title-row">
+                <h3>Git Staging &amp; Commit Command</h3>
+                <button type="button" class="btn-copy" onclick="copySnippet(this, 'cmd-15')">Copy Command</button>
+              </div>
+              <pre class="code-box bash-box" id="cmd-15"><code>git add index.html js/ui/dom.js js/plotting/render.js
+git commit -m &quot;feat(ui): integrate theme toggle, residual panel, and lone-peak UI into app shell (UI-12, UI-13, PEAK-02, OBS-01)&quot; </code></pre>
+            </div>
+
+            <div class="section-block">
+              <details class="files-details" open>
+                <summary>
+                  <span class="details-title">Files in this cluster (3)</span>
+                </summary>
+                <ul class="file-list">
+                  
+            <li class="file-item" data-path="index.html">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/index.html" class="file-link" title="Open index.html">index.html</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/ui/dom.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/ui/dom.js" class="file-link" title="Open js/ui/dom.js">js/ui/dom.js</a>
+            </li>
+            
+
+            <li class="file-item" data-path="js/plotting/render.js">
+              <span class="file-status status-modified">MOD</span>
+              <a href="file:///fast/Desktop/mike/latentlens/projects/flow_plotter/PhaseFinder/js/plotting/render.js" class="file-link" title="Open js/plotting/render.js">js/plotting/render.js</a>
+            </li>
+            
+                </ul>
+              </details>
+            </div>
+          </div>
+        </article>
+        
+    </section>
+  </main>
+
+  <div id="toast" class="toast">Copied to clipboard!</div>
+
+  <script>
+    function copySnippet(button, elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const text = el.innerText || el.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("Copied to clipboard!");
+        const orig = button.textContent;
+        button.textContent = "Copied!";
+        setTimeout(() => { button.textContent = orig; }, 1600);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => { toast.classList.remove("show"); }, 2000);
+    }
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const current = root.getAttribute("data-theme");
+      if (current === "dark") {
+        root.setAttribute("data-theme", "light");
+      } else {
+        root.setAttribute("data-theme", "dark");
+      }
+    }
+
+    function filterClusters(query) {
+      const q = query.toLowerCase().trim();
+      const cards = document.querySelectorAll(".cluster-card");
+      const rows = document.querySelectorAll("#overviewTableBody tr");
+
+      cards.forEach((card) => {
+        const text = card.textContent.toLowerCase();
+        if (!q || text.includes(q)) {
+          card.style.display = "";
+        } else {
+          card.style.display = "none";
+        }
+      });
+
+      rows.forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        if (!q || text.includes(q)) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      });
+    }
+  </script>
+</body>
+</html>

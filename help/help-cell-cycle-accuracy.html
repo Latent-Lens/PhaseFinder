@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Plain-language results comparing PhaseFinder's cell-cycle phase fractions against FlowJo and Flowreader on 45 real samples." />
     <title>PhaseFinder &mdash; How accurate is it on real samples?</title>
     <link rel="stylesheet" href="../css/help.css" />
@@ -22,10 +21,11 @@
           <ol>
             <li><a href="./index.html">Help home</a></li>
             <li><a href="./help-getting-started.html">Getting Started</a></li>
+            <li><a href="./help-first-analysis.html">Your First Analysis</a></li>
             <li><a href="./help-metadata.html">Metadata & Sample Table</a></li>
             <li><a href="./help-plotting.html">Plotting Events</a></li>
             <li><a href="./help-modeling.html">Cell-Cycle Modeling</a></li>
-            <li><a href="./help-cell-cycle-accuracy.html" aria-current="page">Cell-Cycle Accuracy</a></li>
+            <li><a href="./help-cell-cycle-accuracy.html" class="current">Cell-Cycle Accuracy</a></li>
             <li><a href="./help-cell-cycle-math-check.html">Is the Cell-Cycle Math Right?</a></li>
             <li><a href="./help-statistics.html">Summary Statistics</a></li>
             <li><a href="./help-sessions.html">Sessions & Layout</a></li>
@@ -51,6 +51,11 @@
             If you instead want to know whether the underlying <em>method</em> is done correctly, see
             <a href="./help-cell-cycle-math-check.html">Is the cell-cycle math done right?</a>
           </p>
+          <p>
+            For exhaustive empirical test reports across all samples and QC steps, see
+            <a href="./tool_validation.html">Tool-vs-Tool Validation</a> (45 real samples compared against FlowJo and Flowreader) and
+            <a href="./result_validation.html">Ground-Truth Validation</a> (27 synthetic datasets recovering known ground truth).
+          </p>
         </section>
 
         <section id="how" class="help_section">
@@ -73,6 +78,12 @@
             average, each phase percentage was about 5 points off (e.g. we said 40% where the key said
             45%).
           </p>
+          <div class="callout tip">
+            <p class="callout_title">Single-seed regression vs. calibrated validation (AUDIT-010)</p>
+            <p>
+              In addition to these 45 real biological samples, PhaseFinder's automated test suite validates numerical routines against a 62-case deterministic synthetic FCS benchmark with fixed random seeds. A pass on a fixed single-seed synthetic fixture verifies that numerical algorithms and bounds do not drift across software updates (a regression check); it does not constitute an empirical sampling distribution. True measurement variance across random draws requires multi-seed sweeps or experimental biological replicates.
+            </p>
+          </div>
         </section>
 
         <section id="flowjo" class="help_section">
@@ -267,7 +278,8 @@
           </p>
           <p class="help_footer">
             Curious whether the math itself is done correctly (not just whether the numbers match)?
-            See <a href="./help-cell-cycle-math-check.html">Is the cell-cycle math done right?</a>
+            See <a href="./help-cell-cycle-math-check.html">Is the cell-cycle math done right?</a> &middot;
+            Detailed benchmarks: <a href="./tool_validation.html">Tool-vs-Tool Validation</a> &middot; <a href="./result_validation.html">Ground-Truth Validation</a> &middot; <a href="./djf-model-validation.html">Model Validation</a>.
           </p>
         </section>
       </main>

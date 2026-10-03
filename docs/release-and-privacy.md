@@ -51,11 +51,45 @@ must approve the deployment and the repository/environment variable
 still run while deployment is disabled, allowing the exact artifact to be
 reviewed safely.
 
+### Staging deployment route
+
+The release workflow (`.github/workflows/deploy-release.yml`) supports manual
+dispatch (`workflow_dispatch`) against a staging Pages project. The caller
+supplies an existing release tag to build and may optionally enable
+`deploy_staging: true`. When triggered:
+
+1. The workflow checks out `refs/tags/<tag>` and builds that exact tree.
+2. Provenance and dist smoke tests run on the built artifact.
+3. If `deploy_staging` is true, the artifact is deployed to Cloudflare Pages
+   under the project defined by `vars.CLOUDFLARE_STAGING_PROJECT` (defaulting
+   to `phasefinder-staging`) in the protected `staging` environment.
+4. Release notes are previewed without publishing.
+
+
 `package.json` is the application-version source of truth. Preflight requires
 the lockfile to match it and requires a release tag to be exactly `v<version>`.
 Production `build-metadata.json` and the SBOM derive their version from the same
 package field. The package license identifier, root license text, and vendored
 D3 notice are checked together before a release build.
+
+## Versioning
+
+Use Semantic Versioning 2.0.0 and record user-visible changes in
+`CHANGELOG.md` under `Unreleased` until a release is cut. Before the first
+hosted public release, stay at `0.y.z`: bump the minor for a feature or any
+change that can alter fit results, saved-session format, or exports; bump the
+patch for a fix that changes no scientific output. Version `1.0.0` requires
+the owner's explicit go-ahead and marks the first hosted public release.
+After `1.0.0`, bump the major for breaking session/export changes or changed
+scientific defaults, the minor for backward-compatible features, and the patch
+for fixes.
+
+Each fit model has its own version, separate from `package.json`. Bump that
+model's minor version when its default settings or maths can change phase
+fractions, and record the change in `CHANGELOG.md`. A saved session compares
+model versions to identify result drift. A release updates `package.json` and
+`package-lock.json` together; tag the reviewed release commit `v<version>`.
+Pushing the tag and publishing a release require the owner's confirmation.
 
 ## Artifact URL policy
 
@@ -156,6 +190,15 @@ in the Cloudflare dashboard and choose **Rollback to this deployment**, then
 disable `ENABLE_PRODUCTION_DEPLOY` until the incident is resolved. Never rebuild
 an old tag as a substitute for rollback; redeploy or promote the exact archived
 artifact and verify its `SHA256SUMS` first.
+
+### Staging rollback exercise
+
+Before approving a production release:
+1. Dispatch the workflow against the staging Pages project (`deploy_staging: true`).
+2. Verify response headers, CSP, and smoke checks against the staging URL.
+3. Record the staging deployment identifier from `wrangler pages deployment list --project-name=phasefinder-staging`.
+4. Trigger a rollback to the prior known-good deployment on staging to verify rollback behavior before production deployment.
+
 
 ## Logo inspection
 

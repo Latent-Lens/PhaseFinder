@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Review supported FCS inputs, browser requirements, limitations, and common recovery steps." />
     <title>Troubleshooting & Compatibility | PhaseFinder Help</title>
     <link rel="stylesheet" href="../css/help.css" />
@@ -22,6 +21,7 @@
           <ol>
             <li><a href="./index.html">Help home</a></li>
             <li><a href="./help-getting-started.html">Getting Started</a></li>
+            <li><a href="./help-first-analysis.html">Your First Analysis</a></li>
             <li><a href="./help-metadata.html">Metadata & Sample Table</a></li>
             <li><a href="./help-plotting.html">Plotting Events</a></li>
             <li><a href="./help-modeling.html">Cell-Cycle Modeling</a></li>
@@ -29,7 +29,7 @@
             <li><a href="./help-cell-cycle-math-check.html">Is the Cell-Cycle Math Right?</a></li>
             <li><a href="./help-statistics.html">Summary Statistics</a></li>
             <li><a href="./help-sessions.html">Sessions & Layout</a></li>
-            <li><a href="./help-troubleshooting.html" aria-current="page">Troubleshooting & Compatibility</a></li>
+            <li><a href="./help-troubleshooting.html" class="current">Troubleshooting & Compatibility</a></li>
           </ol>
         </nav>
       </aside>
@@ -52,7 +52,12 @@
               <tr><td>State lives in memory</td><td>Reloading the page clears everything that isn't saved to a session file first.</td></tr>
               <tr><td>Network dependency</td><td>None at runtime: D3 is vendored locally, and the DJF numeric implementation is repository-native.</td></tr>
               <tr><td>Folder re-linking on session load</td><td>Chromium browsers remember the FCS folder between sessions; Firefox and Safari will ask you to pick it again each time.</td></tr>
-              <tr><td>Supported browsers</td><td>Chrome/Edge 111+, Firefox 121+, Safari 16.2+, Chrome for Android 111+, and iOS Safari 16.2+. Current stable releases are recommended. OPFS and persistent folder access are optional; without them, analysis still works in memory and session reconnect uses manual file selection.</td></tr>
+              <tr><td>Supported browsers</td><td>Desktop Chrome/Edge 111+, Firefox 121+, and Safari 16.2+. Current stable releases are recommended. OPFS and persistent folder access are optional; without them, analysis still works in memory and session reconnect uses manual file selection.</td></tr>
+              <tr><td>Pre-modeling QC failures</td><td>Pre-modeling QC filters (Structural, Time, Cell Gate, Singlet Gate) fail closed: if a required stage rejects all events or cannot run due to missing parameters (such as missing Time or pulse-geometry channels), authoritative modeling is blocked to prevent fitting corrupted data. Review event counts in the Pre-modeling QC panel, adjust or reset gate bounds, switch Time QC methods, or uncheck unavailable optional gates.</td></tr>
+              <tr><td>OPFS caching &amp; private browsing</td><td>PhaseFinder uses the browser's Origin Private File System (OPFS) to cache loaded FCS files locally for instant session restore. In private/incognito browsing or browsers with strict storage partitioning, OPFS is restricted. PhaseFinder gracefully falls back to in-memory processing: analysis is unaffected, but refreshing the page requires re-selecting source files. Use <span class="ui_label">Storage</span> in the header to monitor quota, delete orphan caches, or reset stored data.</td></tr>
+              <tr><td>Single-peak &amp; arrest distributions</td><td>When a sample displays only one prominent peak (e.g. nocodazole G2 arrest or quiescent G0/G1 cells), automated detection cannot distinguish 1C from 2C on its own and defaults to treating the peak as G1 with G2 projected at 2&times;. For arrested samples, verify the 1C/2C positions against an asynchronous control, manually edit the G1 and G2/M boundaries in <span class="ui_label">Identify Peaks</span>, and click <span class="ui_label">Accept</span>.</td></tr>
+              <tr><td>Optimizer non-convergence &amp; warnings</td><td>A fit that exceeds iteration limits or hits parameter bounds is flagged as not converged or invalid for reporting. If this occurs, inspect the histogram for unremoved debris, verify that the DNA channel is linear ($PnE=0,0$), and ensure peak limits in <span class="ui_label">Identify Peaks</span> closely bracket the true distribution peaks. If Dean&ndash;Jett&ndash;Fox overfits a simple profile, try Dean&ndash;Jett; if Dean&ndash;Jett struggles with an asymmetric S phase, try Dean&ndash;Jett&ndash;Fox.</td></tr>
+              <tr><td>Model comparison (AIC/BIC) prerequisites</td><td>Comparing models via AIC, AICc, or BIC is valid <em>only</em> when candidate models are fitted to the identical dataset, identical binning, and the exact same accepted peak regions. Never adjust peak regions per-model to optimize AIC. Watson Pragmatic is a geometric decomposition without a likelihood function and cannot be compared to Dean&ndash;Jett by AIC/BIC.</td></tr>
             </tbody>
           </table>
         </section>

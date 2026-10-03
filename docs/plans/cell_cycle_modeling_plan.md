@@ -130,9 +130,9 @@ Initial versioned defaults:
 ```js
 {
   modelId: "auto_dj_djf",
-  detectionRatioRange: [1.60, 2.35],
+  detectionRatioRange: [1.65, 2.35],
   ratioMode: "bounded",
-  fitRatioRange: [1.65, 2.25],
+  fitRatioRange: [1.75, 2.25],
   lockedRatio: 2.0,
   cvMode: "free",
   contaminants: {
@@ -307,7 +307,7 @@ modeling: {
   settings: {
     modelId: "auto_dj_djf",
     ratioMode: "bounded",
-    ratioRange: [1.65, 2.25],
+    ratioRange: [1.75, 2.25],
     lockedRatio: 2,
     cvMode: "free",
     contaminants: { debris: "off", aggregate: "off", subG1: "off" },
@@ -1052,16 +1052,9 @@ When CLOCCS is selected:
 - Moving a handle marks dependent fits stale and removes active percentages
   until Refit. It does not run the optimizer continuously.
 
-Accessibility requirements:
-
-- SVG handles use `role="slider"`, `tabindex="0"`, `aria-valuemin/max/now`, and
-  specific labels such as “G1 left peak limit.”
-- Left/Right moves one bin edge; Shift+Left/Right moves five.
-- Numeric fields provide an equivalent interaction.
-- Preserve focus across the commit rerender.
-- Announce commits and validation errors through an `aria-live="polite"`
-  status.
-- Do not communicate confidence/inference by color alone.
+Current interface scope is defined in the [README](../../README.md#scope).
+Numeric fields allow exact limit entry; the plot uses text as well as color
+to show when G2/M was inferred.
 
 ## 7. Sidebar and plot implementation
 
@@ -1107,7 +1100,7 @@ Plot changes:
   markers.
 - Append handle hit targets after the current histogram hit paths so they
   receive pointer events reliably.
-- Reuse the accessible D3 drag approach in `scatter_modal.js`.
+- Reuse the D3 drag approach in `scatter_modal.js`.
 - Replace `pipeline_fit_for_series()` with a generic active-result adapter.
 - Render component descriptors dynamically.
 - Add a zero-centered residual panel, visible by default after a fit.
@@ -1567,7 +1560,7 @@ histograms independently. It is complete only when:
 - the user can select Auto, DJ, DJF, or Watson from the sidebar;
 - every plotted sample owns independent automatic/manual peak regions;
 - ambiguous/inferred regions require review rather than silent fitting;
-- four accessible limits and separate fitted-center markers work correctly;
+- four editable limits and separate fitted-center markers work correctly;
 - DJ and Fox implement integrated expected bin counts and the published
   broadening order;
 - Auto selection is conservative and explainable;

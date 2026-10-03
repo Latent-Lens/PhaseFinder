@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Run pre-modeling QC, identify peaks, choose a model, and interpret fit results." />
     <title>Cell-Cycle Modeling | PhaseFinder Help</title>
     <link rel="stylesheet" href="../css/help.css" />
@@ -22,9 +21,10 @@
           <ol>
             <li><a href="./index.html">Help home</a></li>
             <li><a href="./help-getting-started.html">Getting Started</a></li>
+            <li><a href="./help-first-analysis.html">Your First Analysis</a></li>
             <li><a href="./help-metadata.html">Metadata & Sample Table</a></li>
             <li><a href="./help-plotting.html">Plotting Events</a></li>
-            <li><a href="./help-modeling.html" aria-current="page">Cell-Cycle Modeling</a></li>
+            <li><a href="./help-modeling.html" class="current">Cell-Cycle Modeling</a></li>
             <li><a href="./help-cell-cycle-accuracy.html">Cell-Cycle Accuracy</a></li>
             <li><a href="./help-cell-cycle-math-check.html">Is the Cell-Cycle Math Right?</a></li>
             <li><a href="./help-statistics.html">Summary Statistics</a></li>
@@ -86,6 +86,19 @@
 
           <p><strong>Watson Pragmatic</strong> deserves one extra note: because it takes S phase as leftover signal, that residual is measured <em>strictly between the two fitted peak centres</em> &mdash; signal below the G1 centre (sub-G1 debris) or above the G2/M centre (post-G2 aggregates) is never counted as S. Watson models no separate debris/aggregate component, so keep such contaminants outside the G1&ndash;G2/M interval. Because it is a decomposition rather than a generative model, its results are deliberately never ranked against Dean&ndash;Jett or Dean&ndash;Jett&ndash;Fox by AIC/BIC.</p>
 
+          <h3 id="comparing-models">Comparing models and information criteria (AIC/BIC)</h3>
+          <p>When comparing different models on the same sample (for example, Dean&ndash;Jett versus Dean&ndash;Jett&ndash;Fox), information criteria such as AIC, AICc, and BIC quantify goodness-of-fit while penalizing parameter count to prevent overfitting. However, statistical comparisons carry strict prerequisites:</p>
+          <ul>
+            <li><strong>Identical accepted regions and domain:</strong> AIC and BIC values are comparable <em>only</em> when models are fitted to the exact same histogram data over the exact same analysis domain and binning. Finalize peak regions in <span class="ui_label">Identify Peaks</span> before comparing models.</li>
+            <li><strong>Avoid per-model peak tuning (AUDIT-009):</strong> Iteratively adjusting peak regions for each candidate model until a favored model's fit looks best undermines information criteria, reintroducing a garden-of-forking-paths hazard where candidate models no longer compete on equal footing. Always fix the accepted regions first, then fit alternatives against that shared benchmark.</li>
+            <li><strong>Comparable likelihood formulations:</strong> Information criteria are meaningful between likelihood-based generative models (such as Dean&ndash;Jett and Dean&ndash;Jett&ndash;Fox). They cannot be compared against geometric decomposition methods like Watson Pragmatic, nor across different samples or different bin counts.</li>
+          </ul>
+
+          <div class="callout tip">
+            <p class="callout_title">Single-seed regression vs. calibrated validation (AUDIT-010)</p>
+            <p>PhaseFinder's internal automated tests evaluate model convergence and parameter recovery against a 62-case deterministic synthetic benchmark with fixed random seeds. While single-seed regression testing verifies that algorithmic implementations do not drift across software updates, a single-seed pass is not a calibrated empirical sampling distribution. Real acquisitions exhibit biological and optical variability that single-seed tests cannot capture; treat published tolerance intervals as regression guards and validate experimental conclusions with biological replicates.</p>
+          </div>
+
           <h3 id="fit-all-samples">Fitting several samples at once</h3>
           <p><span class="ui_label">Fit All Samples</span> does more than loop over the samples. Sharing one set of peak-region boundaries across samples is only valid if those samples share a comparable DNA axis, so PhaseFinder checks before it does so:</p>
           <ol>
@@ -110,6 +123,23 @@
             <p>Likewise, a G1/G2 pair and a G2/G4 pair have the same 2:1 spacing, so a single histogram cannot tell them apart. Check that the detected G1 sits where you expect it to, and use a stained control or a sample from the same run that clearly shows both peaks.</p>
           </div>
 
+          <h3 id="residual-strip">Evaluating Fit Quality: The Residual Strip</h3>
+          <p>Beneath the main event histogram, PhaseFinder renders an aligned residual strip for each plotted fit on the shared DNA axis:</p>
+          <ul>
+            <li><strong>Pearson residuals:</strong> Plotted by default ($z = (O - E) / \sqrt{E}$). Because Poisson counting variance scales with expected count $E$, Pearson normalization prevents high-count G1 peaks from visually dominating the residual plot over lower-count S-phase and G2/M regions.</li>
+            <li><strong>Reference band (&plusmn;2):</strong> A shaded reference band highlights the &plusmn;2 standard error interval. Bins exceeding &plusmn;2 are colored distinctly to highlight local model misspecifications or unmodeled sub-populations.</li>
+            <li><strong>Raw residuals:</strong> The controls allow toggling between Pearson residuals and raw counts ($O - E$).</li>
+          </ul>
+
+          <h3 id="exporting-fits">Exporting Model Fits</h3>
+          <p>Click <span class="ui_label">Download</span> in the plot controls to open the export dialog, where you can download your results in several reproducible formats:</p>
+          <ul>
+            <li><strong>Machine-readable JSON:</strong> Exports full provenance for every plotted sample, including application release, Git commit hash, sample metadata, model identifier and version, applied configuration hash, analysis domain, bin count, accepted peak regions, preflight QC results, fit parameters, phase fractions, goodness-of-fit metrics (RMS error, reduced &chi;&sup2;, AIC, BIC), and all optimizer warnings or reporting qualifications.</li>
+            <li><strong>Per-bin CSV:</strong> Exports the observed histogram counts, fitted total curve, individual phase components (G1, S, G2/M), and residuals across each channel bin for independent plotting and numerical audits.</li>
+            <li><strong>QC matrix (TSV):</strong> Detailed event-level filtering accounting across every QC stage for all loaded files.</li>
+            <li><strong>HTML report &amp; vector images:</strong> Comprehensive standalone HTML report or publication-ready SVG and PDF plots.</li>
+          </ul>
+
           <h3 id="pipeline-filters">Pre-modeling QC filters</h3>
           <p>Automated preprocessing works best in layers rather than a single step: first remove acquisition artifacts over time, then apply cell-cloud (debris) gating and explicit singlet/doublet discrimination, and only then fit the histogram. Order matters because clogs, flow-rate surges, dynamic-range artifacts, and margin events distort the very populations the model is trying to quantify. PhaseFinder's four QC filters implement that order:</p>
           <ol>
@@ -125,6 +155,16 @@
             <p>Peak detection and nonlinear fitting are implemented in PhaseFinder's own ES modules, and D3 is vendored locally. The complete pipeline requires no runtime CDN connection.</p>
           </div>
         </section>
+
+        <section id="validation-references" class="help_section">
+            <h2>5. Independent Validation Reports</h2>
+            <p>PhaseFinder's modeling algorithms and phase fraction calculations have been thoroughly verified against established tools and synthetic benchmarks:</p>
+            <ul>
+              <li><a href="./djf-model-validation.html">Cell-Cycle Model Validation</a> &mdash; Term-by-term formula comparisons with FlowJo and open-source packages.</li>
+              <li><a href="./tool_validation.html">Tool-vs-Tool Validation</a> &mdash; Empirical agreement against FlowJo and Flowreader across 45 real acquisitions.</li>
+              <li><a href="./result_validation.html">Ground-Truth Validation</a> &mdash; Phase fraction recovery on 27 synthetic ground-truth samples across the full QC ladder.</li>
+            </ul>
+          </section>
 
         <nav class="help_page_nav" aria-label="Previous and next help topics">
           <a href="./help-plotting.html">&larr; Plotting Events</a>

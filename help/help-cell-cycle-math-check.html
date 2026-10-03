@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Plain-language explanation of how PhaseFinder's Dean-Jett-Fox cell-cycle math was checked against open-source implementations and FlowJo's documentation." />
     <title>PhaseFinder &mdash; Is the cell-cycle math done right?</title>
     <link rel="stylesheet" href="../css/help.css" />
@@ -22,11 +21,12 @@
           <ol>
             <li><a href="./index.html">Help home</a></li>
             <li><a href="./help-getting-started.html">Getting Started</a></li>
+            <li><a href="./help-first-analysis.html">Your First Analysis</a></li>
             <li><a href="./help-metadata.html">Metadata & Sample Table</a></li>
             <li><a href="./help-plotting.html">Plotting Events</a></li>
             <li><a href="./help-modeling.html">Cell-Cycle Modeling</a></li>
             <li><a href="./help-cell-cycle-accuracy.html">Cell-Cycle Accuracy</a></li>
-            <li><a href="./help-cell-cycle-math-check.html" aria-current="page">Is the Cell-Cycle Math Right?</a></li>
+            <li><a href="./help-cell-cycle-math-check.html" class="current">Is the Cell-Cycle Math Right?</a></li>
             <li><a href="./help-statistics.html">Summary Statistics</a></li>
             <li><a href="./help-sessions.html">Sessions & Layout</a></li>
             <li><a href="./help-troubleshooting.html">Troubleshooting & Compatibility</a></li>
@@ -46,9 +46,13 @@
           <p>
             One fair question about any analysis tool is: <em>&ldquo;How do I know it's doing the
             math right, and not just making up a nice-looking number?&rdquo;</em> This page answers
-            that for PhaseFinder's cell-cycle fitting. It does <strong>not</strong> ask &ldquo;how
-            accurate is it on real samples&rdquo; &mdash; that's a separate page,
+            that for PhaseFinder's cell-cycle fitting in plain language. It does <strong>not</strong> ask &ldquo;how
+            accurate is it on real samples&rdquo; &mdash; that's covered in
             <a href="./help-cell-cycle-accuracy.html">How accurate is it on real samples?</a>
+          </p>
+          <p>
+            If you want the complete, term-by-term mathematical formulation, analytical derivations, and parameter-by-parameter comparisons with FlowJo, see
+            <a href="./djf-model-validation.html">Cell-Cycle Model Validation</a>.
           </p>
         </section>
 
@@ -193,6 +197,7 @@
             Want the numbers instead of the method? See
             <a href="./help-cell-cycle-accuracy.html">How accurate is it on real samples?</a> &mdash;
             where we compare PhaseFinder's answers to FlowJo's and Flowreader's on 45 real samples.
+            Full formulas: <a href="./djf-model-validation.html">Cell-Cycle Model Validation</a>.
           </p>
         </section>
       </main>

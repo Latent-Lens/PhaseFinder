@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Annotate samples, import metadata, split filenames, sort and filter rows, and export TSV files." />
     <title>Metadata & Sample Table | PhaseFinder Help</title>
     <link rel="stylesheet" href="../css/help.css" />
@@ -22,7 +21,8 @@
           <ol>
             <li><a href="./index.html">Help home</a></li>
             <li><a href="./help-getting-started.html">Getting Started</a></li>
-            <li><a href="./help-metadata.html" aria-current="page">Metadata & Sample Table</a></li>
+            <li><a href="./help-first-analysis.html">Your First Analysis</a></li>
+            <li><a href="./help-metadata.html" class="current">Metadata & Sample Table</a></li>
             <li><a href="./help-plotting.html">Plotting Events</a></li>
             <li><a href="./help-modeling.html">Cell-Cycle Modeling</a></li>
             <li><a href="./help-cell-cycle-accuracy.html">Cell-Cycle Accuracy</a></li>
@@ -45,7 +45,7 @@
 
           <h3 id="editing-annotations">Editing annotations</h3>
           <p>Click into any annotation cell to type a value directly &mdash; strain, replicate, arrest status, timepoint, or whatever custom columns you've configured (see below). Edits are stored immediately and are included if you save a session or export the table.</p>
-          <p>Use the add-column icon <img class="inline_icon" src="../assets/img/manual_add_column.svg" alt="" aria-hidden="true" /> in the table title bar to create a blank editable metadata column by hand. Use the metadata import icon <img class="inline_icon" src="../assets/img/table_import.svg" alt="Metadata import" /> to load a CSV or TSV metadata file. The file must include a filename-like column such as <strong>Filename</strong>, <strong>Sample Name</strong>, or <strong>FCS File</strong>; PhaseFinder matches those values to the currently loaded FCS filenames and ignores metadata rows for files that are not loaded.</p>
+          <p>Use the add-column icon <img class="inline_icon" src="../assets/img/manual_add_column.svg" alt="" /> in the table title bar to create a blank editable metadata column by hand. Use the metadata import icon <img class="inline_icon" src="../assets/img/table_import.svg" alt="Metadata import" /> to load a CSV or TSV metadata file. The file must include a filename-like column such as <strong>Filename</strong>, <strong>Sample Name</strong>, or <strong>FCS File</strong>; PhaseFinder matches those values to the currently loaded FCS filenames and ignores metadata rows for files that are not loaded.</p>
           <p>CSV/TSV source headers must be unique after trimming and case normalization. An import with duplicate headers is rejected before changing the table, and the error identifies both source column numbers.</p>
 
           <h3 id="sorting-filtering">Sorting &amp; filtering</h3>
@@ -57,7 +57,7 @@
           </ul>
 
           <h3 id="metadata-wizard">Filename metadata wizard</h3>
-          <p>Rather than guessing annotation values, PhaseFinder lets you derive metadata columns directly from each filename. The wizard opens automatically about a second after your first files load (only once per browser tab); you can reopen it any time via the filename-metadata icon <img class="inline_icon" src="../assets/img/text_to_col.svg" alt="" aria-hidden="true" /> in the table's title bar (it's disabled until at least one file is loaded).</p>
+          <p>Rather than guessing annotation values, PhaseFinder lets you derive metadata columns directly from each filename. The wizard opens automatically about a second after your first files load (only once per browser tab); you can reopen it any time via the filename-metadata icon <img class="inline_icon" src="../assets/img/text_to_col.svg" alt="" /> in the table's title bar (it's disabled until at least one file is loaded).</p>
           <figure class="help_figure help_figure_scroll">
             <div class="screenshot_frame">
               <img src="../assets/img/help/metadata-wizard.png" width="1180" height="876" loading="lazy" decoding="async" alt="Filename metadata wizard configured with delimiter, regex, and fixed-width steps, hidden throwaway pieces, and a preview table showing Filename, Strain, Replicate, Nocodazole Arrest, and Timepoint." />
@@ -112,15 +112,15 @@
             <div class="screenshot_frame">
               <img src="../assets/img/help/metadata-export.png" width="1535" height="57" loading="lazy" decoding="async" alt="Metadata table title bar with the filename metadata wizard, export TSV, and collapse buttons." />
             </div>
-            <figcaption>The export button is the table-with-down-arrow icon <img class="inline_icon" src="../assets/img/table_export.svg" alt="" aria-hidden="true" /> in the metadata table title bar.</figcaption>
+            <figcaption>The export button is the table-with-down-arrow icon <img class="inline_icon" src="../assets/img/table_export.svg" alt="" /> in the metadata table title bar.</figcaption>
           </figure>
-          <p>The export icon <img class="inline_icon" src="../assets/img/table_export.svg" alt="" aria-hidden="true" /> in the table's title bar exports exactly the currently <em>visible</em> rows as a tab-separated <code>.tsv</code> file. Active filters are respected, so the exported file matches the rows you are looking at in the table.</p>
+          <p>The export icon <img class="inline_icon" src="../assets/img/table_export.svg" alt="" /> in the table's title bar exports exactly the currently <em>visible</em> rows as a tab-separated <code>.tsv</code> file. Active filters are respected, so the exported file matches the rows you are looking at in the table.</p>
           <p>The TSV includes the filename, every visible metadata column created by the wizard or typed by hand, and any summary-statistics columns currently shown. This makes the export useful as an analysis-ready metadata sheet after you have annotated samples and calculated channel statistics.</p>
           <p><strong>Spreadsheet safety:</strong> export leaves PhaseFinder's stored values unchanged, but prefixes string cells whose first non-control character is <code>=</code>, <code>+</code>, <code>-</code>, or <code>@</code> with an apostrophe so spreadsheet software treats them as text. Genuine numeric negative values remain numeric. The protection targets ASCII formula syntax; visually similar Unicode characters are exported unchanged because they are not spreadsheet operators.</p>
         </section>
 
         <nav class="help_page_nav" aria-label="Previous and next help topics">
-          <a href="./help-getting-started.html">&larr; Getting Started</a>
+          <a href="./help-first-analysis.html">&larr; Your First Analysis</a>
           <a href="./index.html">Help home</a>
           <a href="./help-plotting.html">Plotting Events &rarr;</a>
         </nav>

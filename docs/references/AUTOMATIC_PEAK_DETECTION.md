@@ -226,7 +226,7 @@ Every ordered pair \((i,j)\), \(x_i<x_j\), is considered when its observed ratio
 R_{min}\le R_{ij}=\frac{x_j}{x_i}\le R_{max}.
 \]
 
-The default broad detection range is \([1.60,2.35]\). The subsequent model fit may use a tighter assay-specific constraint.
+The default broad detection range is \([1.65,2.35]\), symmetric at ±0.35 around the expected 2× G2:G1 ratio (it was [1.60, 2.35] until 2026-09-24, with no recorded reason for the asymmetry). The subsequent model fit may use a tighter assay-specific constraint.
 
 ### 8.1 Ratio agreement
 
@@ -326,7 +326,7 @@ import { detectCellCyclePeakPair } from './src/index.js';
 const result = detectCellCyclePeakPair(edges, counts, {
   smoothingScales: [1, 2, 4],
   expectedRatio: 2.0,
-  ratioRange: [1.60, 2.35],
+  ratioRange: [1.65, 2.35],
   minPairScore: 0.52,
   minPairConfidence: 0.65
 });

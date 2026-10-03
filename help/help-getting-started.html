@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Learn the workspace, load FCS files, choose a channel, and follow a typical analysis workflow." />
     <title>Getting Started | PhaseFinder Help</title>
     <link rel="stylesheet" href="../css/help.css" />
@@ -21,7 +20,8 @@
         <nav aria-label="Help topics">
           <ol>
             <li><a href="./index.html">Help home</a></li>
-            <li><a href="./help-getting-started.html" aria-current="page">Getting Started</a></li>
+            <li><a href="./help-getting-started.html" class="current">Getting Started</a></li>
+            <li><a href="./help-first-analysis.html">Your First Analysis</a></li>
             <li><a href="./help-metadata.html">Metadata & Sample Table</a></li>
             <li><a href="./help-plotting.html">Plotting Events</a></li>
             <li><a href="./help-modeling.html">Cell-Cycle Modeling</a></li>
@@ -44,7 +44,7 @@
           <p>PhaseFinder's screen is organized into these areas:</p>
           <ul>
             <li><strong>Sidebar</strong> (left) &mdash; drop zone for FCS files, the DNA-content channel selector, and the main action buttons (<span class="ui_label">Plot Channel Events</span>, <span class="ui_label">Cell Cycle Modeling</span>, <span class="ui_label">Calculate Statistics</span>). <span class="ui_label">Cell Cycle Modeling</span> switches the sidebar into a modeling view that holds the Pre-modeling QC filters, the Identify Peaks panel, and the Model &amp; Fit controls; <span class="ui_label">Back</span> returns it to the file/channel controls.</li>
-            <li><strong>Plot panel</strong> (top of the workspace) &mdash; appears once you plot a channel; shows the overlaid event histogram, its controls, and (once modeling starts) the DJF fit overlay and results table.</li>
+            <li><strong>Plot panel</strong> (top of the workspace) &mdash; appears once you plot a channel; shows the overlaid event histogram, its controls, and (once modeling starts) the fitted phase curves, aligned residual strip, and results table.</li>
             <li><strong>Metadata table panel</strong> (bottom of the workspace) &mdash; one row per loaded FCS file with editable annotations, sorting, filtering, and optional summary-statistics columns.</li>
             <li><strong>Header</strong> (top) &mdash; the PhaseFinder logo plus <span class="ui_label">Load</span>, <span class="ui_label">Save</span>, <span class="ui_label">Storage</span>, and <span class="ui_label">Reset</span>. <span class="ui_label">Get Help</span> is in the bottom status bar.</li>
             <li><strong>Status bar</strong> (bottom) &mdash; progress, completion messages, warnings, and copyright information.</li>
@@ -53,15 +53,15 @@
           <figure class="help_figure">
             <div class="screenshot_frame annotated_screenshot">
               <img src="../assets/img/help/overview.png" width="1920" height="1080" loading="lazy" decoding="async" alt="PhaseFinder app with loaded FCS files, a plotted histogram, computed statistics in the metadata table, and header/session controls." />
-              <span class="overview_marker overview_marker_header" aria-hidden="true"></span>
+              <span class="overview_marker overview_marker_header"></span>
               <span class="overview_label overview_label_header">Header and session buttons</span>
-              <span class="overview_marker overview_marker_sidebar" aria-hidden="true"></span>
+              <span class="overview_marker overview_marker_sidebar"></span>
               <span class="overview_label overview_label_sidebar">Sidebar</span>
-              <span class="overview_marker overview_marker_plot" aria-hidden="true"></span>
+              <span class="overview_marker overview_marker_plot"></span>
               <span class="overview_label overview_label_plot">Plot panel</span>
-              <span class="overview_marker overview_marker_table" aria-hidden="true"></span>
+              <span class="overview_marker overview_marker_table"></span>
               <span class="overview_label overview_label_table">Metadata table panel</span>
-              <span class="overview_marker overview_marker_status" aria-hidden="true"></span>
+              <span class="overview_marker overview_marker_status"></span>
               <span class="overview_label overview_label_status">Status bar</span>
             </div>
             <figcaption>PhaseFinder's main workspace after files have been loaded, a channel has been plotted, and statistics have been calculated.</figcaption>
@@ -93,7 +93,7 @@
             <li>The sidebar shows a running <span class="ui_label">Loaded FCS files (N)</span> list once at least one file is loaded.</li>
             <li>A progress overlay reports read progress for larger batches of files.</li>
           </ul>
-          <p>If you collapse the sidebar (see <a href="./help-sessions.html#layout">Layout Controls</a>), a compact icon rail still lets you drop or browse for more files <img class="inline_icon" src="../assets/img/file_upload.svg" alt="" aria-hidden="true" />, change the channel <img class="inline_icon" src="../assets/img/checklist.svg" alt="" aria-hidden="true" />, plot <img class="inline_icon" src="../assets/img/histogram.svg" alt="" aria-hidden="true" />, model <img class="inline_icon" src="../assets/img/function_icon.svg" alt="" aria-hidden="true" />, and calculate statistics <img class="inline_icon" src="../assets/img/calculator.svg" alt="" aria-hidden="true" />.</p>
+          <p>If you collapse the sidebar (see <a href="./help-sessions.html#layout">Layout Controls</a>), a compact icon rail still lets you drop or browse for more files <img class="inline_icon" src="../assets/img/file_upload.svg" alt="" />, change the channel <img class="inline_icon" src="../assets/img/checklist.svg" alt="" />, plot <img class="inline_icon" src="../assets/img/histogram.svg" alt="" />, model <img class="inline_icon" src="../assets/img/function_icon.svg" alt="" />, and calculate statistics <img class="inline_icon" src="../assets/img/calculator.svg" alt="" />.</p>
         </section>
 
 <section id="channel-selection" class="help_section">
@@ -122,15 +122,18 @@
             <li>Check the rows you want in the plot &mdash; unchecking removes a sample without losing its already-loaded data.</li>
             <li>Click <span class="ui_label">Plot Channel Events</span>. Adjust <strong>Color by</strong>, <strong>Display</strong>, and <strong>Bins</strong>.</li>
             <li>Click <span class="ui_label">Cell Cycle Modeling</span> to open the modeling controls in the sidebar. Apply the Pre-modeling QC filters you want, then use <span class="ui_label">Identify Peaks</span> to detect and, if needed, adjust the G1 and G2/M peak regions for the sample you're reviewing.</li>
+            <li>In <span class="ui_label">Model &amp; Fit</span>, select a model (such as Dean&ndash;Jett&ndash;Fox, Dean&ndash;Jett, Watson Pragmatic, Watson Classic, or CLOCCS) and click <span class="ui_label">Fit Current</span> or <span class="ui_label">Fit All Samples</span>. Review the fitted curves and the aligned Pearson residual strip directly below the histogram to verify fit quality.</li>
+            <li>Export publication-grade figures or machine-readable fits: click <span class="ui_label">Download</span> to export SVG/PDF vector graphics, high-resolution PNG/JPEG images, machine-readable JSON fit provenance, per-bin curve CSV data, or printable HTML reports.</li>
             <li>Optionally, use <span class="ui_label">Calculate Statistics</span> to compute per-file summary statistics for any channel, and export the table to TSV for use elsewhere.</li>
             <li>Click <span class="ui_label">Save</span> before closing the tab so you (or a collaborator) can resume this same analysis later.</li>
           </ol>
+          <p>For a detailed, step-by-step walkthrough with bundled test data and exact expected values, see <a href="./help-first-analysis.html">Your First Analysis: Step-by-Step Tutorial</a>.</p>
         </section>
 
         <nav class="help_page_nav" aria-label="Previous and next help topics">
           <a href="./index.html">&larr; Help home</a>
           <a href="./index.html">Help home</a>
-          <a href="./help-metadata.html">Metadata & Sample Table &rarr;</a>
+          <a href="./help-first-analysis.html">Your First Analysis &rarr;</a>
         </nav>
 
         <p class="help_footer">PhaseFinder Help &mdash; <a href="./index.html">all help topics</a> &middot; <a href="../index.html">back to the app</a>.</p>

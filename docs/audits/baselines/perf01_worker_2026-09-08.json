@@ -1,0 +1,70 @@
+{
+  "task": "PERF-01",
+  "date": "2026-09-08",
+  "scope": "Chromium current-tree worker suite; CDP heaps exclude total browser/process RSS",
+  "command": ".venv/bin/python tests/validation/driving_code/benchmark_fit_workers.py",
+  "suiteSeconds": 5.838355356012471,
+  "checks": [
+    {
+      "name": "fit worker: a real fit matches the main-thread result within tolerance",
+      "pass": true,
+      "detail": "{\"workerG1\":70.00019816729662,\"mainG1\":70.00019816729662,\"workerG2\":140.0026251692765,\"mainG2\":140.0026251692765}"
+    },
+    {
+      "name": "fit worker: an unknown model id rejects with a clear error",
+      "pass": true,
+      "detail": "Unknown model \"not-a-real-model\"."
+    },
+    {
+      "name": "MAINT-01: fit worker rejects incompatible protocol versions deterministically",
+      "pass": true,
+      "detail": "{\"protocolVersion\":1,\"type\":\"result\",\"request_id\":17,\"ok\":false,\"code\":\"WORKER_PROTOCOL_MISMATCH\",\"error\":\"Unsupported fit-worker message protocol.\"}"
+    },
+    {
+      "name": "fit worker: concurrent requests are routed back to the correct caller by request id",
+      "pass": true,
+      "detail": "{\"a\":64,\"b\":512}"
+    },
+    {
+      "name": "PERF-01: cancellation terminates active work promptly and a subsequent fit succeeds",
+      "pass": true,
+      "detail": "{\"latencyMs\":0.09999999403953552,\"uiTicks\":3,\"code\":\"FIT_CANCELLED\"}"
+    },
+    {
+      "name": "PERF-01: unavailable workers reject instead of fitting on the UI thread",
+      "pass": true,
+      "detail": "Fit workers are unavailable. Enable Web Workers and reload to fit samples."
+    },
+    {
+      "name": "PERF-01: queued cancellation, worker failure and recovery are isolated",
+      "pass": true,
+      "detail": "{\"bounded\":true,\"recovery\":true,\"statuses\":[\"rejected\",\"rejected\",\"fulfilled\"]}"
+    },
+    {
+      "name": "pool size: scales as a fraction of logical cores, always leaving one for the UI",
+      "pass": true,
+      "detail": "{\"wrong\":[],\"fallbackOk\":true,\"fractionOk\":true,\"live\":16}"
+    }
+  ],
+  "workerHeaps": [
+    {
+      "id": 1,
+      "result": {
+        "usedSize": 3671288,
+        "totalSize": 20971520,
+        "embedderHeapUsedSize": 887232,
+        "backingStorageSize": 388101
+      }
+    }
+  ],
+  "mainHeap": {
+    "before": {
+      "JSHeapUsedSize": 3148768,
+      "JSHeapTotalSize": 5292032
+    },
+    "after": {
+      "JSHeapUsedSize": 4896400,
+      "JSHeapTotalSize": 13680640
+    }
+  }
+}

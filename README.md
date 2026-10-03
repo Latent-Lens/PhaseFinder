@@ -21,10 +21,17 @@ The project currently focuses on a specific analysis workflow:
 Files are read by browser APIs. There is no upload server or database. Vite
 builds the static production artifact used by the release workflow.
 
+### Scope
+
+PhaseFinder targets desktop and laptop windows at least 1080 px wide. Narrower
+windows scroll horizontally. Phone and tablet layouts are not supported, and
+accessibility work is outside the current product scope beyond existing image
+alt text and icon-button labels.
+
 ### Browser support
 
-PhaseFinder supports Chrome/Edge 111+, Firefox 121+, Safari 16.2+, Chrome for
-Android 111+, and iOS Safari 16.2+. CI exercises current Chromium, Firefox, and
+PhaseFinder supports desktop Chrome/Edge 111+, Firefox 121+, and Safari 16.2+.
+CI exercises current Chromium, Firefox, and
 WebKit because Playwright does not distribute historical engines; these minimums
 are the feature baseline, while current stable releases are recommended.
 Web Workers, WebAssembly, IndexedDB, CSS Grid, and `inert` are required and are
@@ -107,7 +114,6 @@ PhaseFinder is licensed under PolyForm Noncommercial 1.0.0; vendored dependency 
 │   ├── table.css        # metadata table, sort headers, filter dropdowns
 │   ├── plot.css         # plot panel layout, controls bar, DJF readout
 │   ├── feedback.css     # status bar and progress overlay
-│   ├── responsive.css   # @media overrides (loaded last)
 │   └── help.css         # standalone stylesheet for the help center
 ├── js/
 │   ├── vendor/          # vendored D3 ESM bundle
@@ -137,7 +143,7 @@ Note: the file list above is a high-level map, not exhaustive. The app loads as
 native ES modules: `index.html` has a single `<script type="module"
 src="./js/main.js">`, and `js/main.js` imports every layer and runs an ordered
 `init_*()` bootstrap, so the dependency graph lives in the `import` statements
-rather than a hand-maintained list of script tags. `help/index.html` links to topic pages documenting all of
+rather than a hand-maintained list of script tags. `help/index.html` links to topic pages and a step-by-step first-analysis walkthrough ([`help/help-first-analysis.html`](help/help-first-analysis.html)) documenting all of
 the features the app adds (the metadata wizard, summary statistics, session
 save/load, and layout controls); see it for an up-to-date feature tour. For the
 module dependency layers and the key event-flow / user-decision paths as mermaid
@@ -210,9 +216,9 @@ The HTML entry point. It contains:
 ### `css/*` (split stylesheets)
 
 The stylesheet was split from a single file into themed files, linked in cascade
-order in `index.html` (`base → layout → sidebar → table → plot → feedback →
-responsive`). The `@media` block lives in `responsive.css` and is loaded last so
-its breakpoint overrides win. Each file carries a header comment describing its
+order in `index.html` (`base → layout → sidebar → table → plot → feedback`).
+The app keeps a 1080 px minimum desktop width; narrower windows scroll
+horizontally. Each file carries a header comment describing its
 scope (see the structure list above).
 
 ### `js/fcs/parser.js`
@@ -583,7 +589,7 @@ reported as N/A.
 
 ### Synthetic FCS benchmark
 
-`tests/validation/validation_test_data/synthetic_fcs/` contains 47 deterministic, entirely synthetic
+`tests/validation/validation_test_data/synthetic_fcs/` contains 62 deterministic, entirely synthetic
 FCS cases. No file contains human, patient, instrument, or other real
 experimental data. The corpus tests parser behavior, QC defenses, and recovery
 of planted G1/S/G2/M fractions; it is regression evidence, not biological
