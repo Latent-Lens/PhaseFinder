@@ -21,9 +21,9 @@ def check_browser():
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(tracker.OUTPUT.as_uri())
         items = tracker.parse_checklist(tracker.CHECKLIST.read_text())
-        for flags in product((False, True), repeat=3):
-            selected = {status for status, enabled in zip(('open', 'partial', 'closed'), flags) if enabled}
-            for status, enabled in zip(('open', 'partial', 'closed'), flags):
+        for flags in product((False, True), repeat=4):
+            selected = {status for status, enabled in zip(('open', 'partial', 'human', 'closed'), flags) if enabled}
+            for status, enabled in zip(('open', 'partial', 'human', 'closed'), flags):
                 page.locator(f'#status input[value="{status}"]').set_checked(enabled)
             visible = page.locator('article:visible').evaluate_all('(cards) => cards.map(card => card.id)')
             assert set(visible) == {item['id'] for item in items if item['status'] in selected}
@@ -32,7 +32,7 @@ def check_browser():
         expected = {item['id'] for item in items if item['status'] in ('open', 'partial') and item['priority'] == 'P1'}
         assert set(page.locator('article:visible').evaluate_all('(cards) => cards.map(card => card.id)')) == expected
         assert page.locator('#current-work').is_visible()
-        active = [item for item in items if item['status'] != 'closed' and item['fields'].get('Started')]
+        active = [item for item in items if item['status'] not in ('closed', 'human') and item['fields'].get('Started')]
         assert page.locator('#current-work a').count() == 2 * len(active)
         if active:
             issue_id = active[0]['id']
@@ -49,7 +49,7 @@ def check_browser():
         page.wait_for_function('!document.querySelector("#UI-01").hidden')
         page.get_by_role('button', name='Clear filters').click()
         page.wait_for_function('document.querySelectorAll("article[hidden]").length === 0')
-        assert page.locator('#status input:checked').count() == 3
+        assert page.locator('#status input:checked').count() == 4
         assert page.locator('#count-total').inner_text() == str(len(items))
         for width in (320, 390, 768, 1024):
             page.set_viewport_size({'width': width, 'height': 900})
@@ -78,7 +78,7 @@ def check_browser():
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         assert not errors, errors
         browser.close()
-    print('Browser: all eight status combinations, priority intersection, reset and narrow layouts pass.')
+    print('Browser: all sixteen status combinations, priority intersection, reset and narrow layouts pass.')
 
 
 def main():
@@ -108,7 +108,7 @@ def main():
     assert [i['total'] for i in items] == [1, 2, 1]
     template = tracker.TEMPLATE.read_text()
     page, counts = tracker.render_document(source, template)
-    assert counts == {'closed': 1, 'partial': 1, 'open': 1}
+    assert counts == {'closed': 1, 'partial': 1, 'open': 1, 'human_intervention': 0}
     assert page.count('<article ') == 3
     history = page.split('id="completion-history"', 1)[1].split('<tbody>', 1)[1].split('</tbody>', 1)[0]
     assert 'href="#TEST-01"' in history and 'href="#TEST-02"' not in history

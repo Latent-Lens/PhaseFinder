@@ -67,7 +67,11 @@ def parse_checklist(text: str) -> list[dict]:
         if box:
             current["boxes"].append(box[1].lower())
         review_label = re.search(r"\*\*(Review \(\d{4}-\d{2}-\d{2}\)):\*\*", line)
-        labels = ["Priority", "Status", "Started", "Completed", "Model", "Problem", "Recommendation"]
+        labels = [
+            "Priority", "Status", "Started", "Completed", "Model",
+            "Human Intervention Needed", "Blocked By", "Human Intervention Reason",
+            "Human Intervention Root", "Problem", "Recommendation",
+        ]
         if review_label:
             labels.append(review_label[1])
         for label in labels:
@@ -92,8 +96,9 @@ def parse_checklist(text: str) -> list[dict]:
         status = {"x": "closed", "~": "partial", " ": "open", "?": "open"}[explicit[1]] if explicit else derived
         if (status == "closed" and derived != "closed") or (status == "open" and derived != "open") or (status == "partial" and derived == "closed"):
             raise ValueError(f"Status conflicts with acceptance boxes: {item['id']}")
-        item["status"] = status
         item["blocked"] = bool(re.search(r"\b(blocked|deferred)\b", fields.get("Status", ""), re.I))
+        item["human_intervention"] = bool(fields.get("Human Intervention Needed"))
+        item["status"] = "human" if item["human_intervention"] and status != "closed" else status
     return items
 
 
@@ -295,9 +300,30 @@ def render_document(markdown: str, template: str) -> tuple[str, Counter]:
                         f'<td><a href="#{item["id"]}">{inline(item["title"])}</a></td></tr>')
         return "\n".join(rows) or '<tr><td colspan="5" class="tracking-missing">-</td></tr>'
 
+    def human_intervention_rows(entries):
+        rows = []
+        for item in entries:
+            fields = item["fields"]
+            blocked_at = tracking_cell(item, "Human Intervention Needed")
+            blocked_by = html.escape(fields.get("Blocked By", "-") or "-")
+            reason = inline(fields.get("Human Intervention Reason", "No reason recorded.") or "No reason recorded.")
+            rows.append(
+                f'<tr data-task-id="{item["id"]}">{blocked_at}<td>{blocked_by}</td>'
+                f'<td><a href="#{item["id"]}">{item["id"]}</a></td>'
+                f'<td><a href="#{item["id"]}">{inline(item["title"])}</a></td>'
+                f'<td>{reason}</td></tr>'
+            )
+        return "\n".join(rows) or '<tr><td colspan="5" class="tracking-missing">-</td></tr>'
+
     completed = sorted((i for i in items if i["status"] == "closed"), key=timestamp_key, reverse=True)
-    active = sorted((i for i in items if i["status"] != "closed" and i["fields"].get("Started")),
+    active = sorted((i for i in items if i["status"] != "closed" and i["fields"].get("Started") and not i["human_intervention"]),
                     key=lambda item: timestamp_key(item, "Started"), reverse=True)
+    human_intervention = sorted(
+        (i for i in items if i["human_intervention"]),
+        key=lambda item: timestamp_key(item, "Human Intervention Needed"),
+        reverse=True,
+    )
+    counts["human_intervention"] = len(human_intervention)
     cards, section_options = [], []
     for section in dict.fromkeys(item["section"] for item in items):
         section_options.append(f'<option>{html.escape(section)}</option>')
@@ -308,11 +334,12 @@ def render_document(markdown: str, template: str) -> tuple[str, Counter]:
             review = next((fields[key] for key in sorted(fields, reverse=True) if key.startswith("Review (")), "No current review recorded.")
             recommendation = fields.get("Recommendation", "Complete the acceptance checklist below.")
             blocked = '<span class="badge">Blocked / deferred</span>' if item["blocked"] else ''
+            human_badge = '<span class="badge human-needed">Human intervention needed</span>' if item["human_intervention"] else '' 
             cards.append(
                 f'<article id="{item["id"]}" data-status="{item["status"]}" data-priority="{item["priority"]}">'
                 f'<div class="badges"><a href="#{item["id"]}">{item["id"]}</a> '
                 f'<span class="badge {item["priority"]}">{item["priority"]}</span> '
-                f'<span class="badge {item["status"]}">{item["status"].capitalize()}</span>{blocked}'
+                f'<span class="badge {item["status"]}">{item["status"].capitalize()}</span>{blocked}{human_badge}'
                 f'<span>{item["ticked"]}/{item["total"]} acceptance boxes complete</span></div>'
                 f'<h3>{inline(item["title"])}</h3>'
                 f'<div class="columns"><div><h4>Issue and evidence</h4><p>{inline(problem)}</p>'
@@ -324,7 +351,11 @@ def render_document(markdown: str, template: str) -> tuple[str, Counter]:
         cards.append('</section>')
     return Template(template).substitute(
         total=len(items), open=counts["open"], partial=counts["partial"], closed=counts["closed"],
-        current_work=tracking_rows(active, False), completion_history=tracking_rows(completed, True), cards="\n".join(cards), section_options="\n".join(section_options),
+        human_intervention=counts["human_intervention"],
+        current_work=tracking_rows(active, False),
+        human_intervention_rows=human_intervention_rows(human_intervention),
+        completion_history=tracking_rows(completed, True),
+        cards="\n".join(cards), section_options="\n".join(section_options),
     ), counts
 
 
@@ -339,7 +370,11 @@ def main() -> int:
             return 1
     else:
         OUTPUT.write_text(page)
-    print(f"Tracker: {sum(counts.values())} total; {counts['open']} open; {counts['partial']} partial; {counts['closed']} closed")
+    total = counts["open"] + counts["partial"] + counts["human_intervention"] + counts["closed"]
+    print(
+        f"Tracker: {total} total; {counts['open']} open; {counts['partial']} partial; "
+        f"{counts['human_intervention']} human intervention; {counts['closed']} closed"
+    )
     return 0
 
 

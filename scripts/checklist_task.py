@@ -125,6 +125,10 @@ class Task:
         # be accidentally reclaimed merely because it predates Completed tags.
         return self.completed is not None or self.acceptance_complete
 
+    @property
+    def blocked(self) -> bool:
+        return bool(re.search(r"^\*\*Human Intervention Needed:\*\*", self.body, re.MULTILINE))
+
 
 class ChecklistError(RuntimeError):
     pass
@@ -371,7 +375,7 @@ def choose_claimable(tasks: Sequence[Task], order: str) -> Task:
     candidates = [
         task
         for task in tasks
-        if not task.finished and task.started is None and task.priority is not None
+        if not task.finished and not task.blocked and task.started is None and task.priority is not None
     ]
     if not candidates:
         raise ChecklistError("No unfinished, unclaimed tasks with a parsed priority are available.")
@@ -403,6 +407,9 @@ def claim(args: argparse.Namespace) -> int:
     with exclusive_lock(lock_path, args.lock_timeout):
         original = read_text(checklist)
         tasks = parse_tasks(original)
+        owned = [t.task_id for t in tasks if t.model == args.model and t.started and not t.finished and not t.blocked]
+        if owned:
+            raise ChecklistError(f"Resume existing unfinished work before claiming: {', '.join(owned)}")
         task = choose_claimable(tasks, args.order)
         started = now_iso()
         new_body = add_claim_metadata(task.body, started=started, model=args.model)
@@ -493,6 +500,28 @@ def complete(args: argparse.Namespace) -> int:
     return 0
 
 
+def block(args: argparse.Namespace) -> int:
+    checklist = args.checklist
+    reason = " ".join(args.reason.split())
+    if not reason:
+        raise ChecklistError("A specific human intervention reason is required.")
+    with exclusive_lock(lock_path_for(checklist), args.lock_timeout):
+        original = read_text(checklist)
+        task = task_by_id(parse_tasks(original), args.task_id)
+        if task.finished or task.blocked or not task.started or task.model != args.model:
+            raise ChecklistError("Only your active unfinished task can be blocked.")
+        body = insert_after_heading(task.body, [
+            f"**Human Intervention Needed:** {now_iso()}",
+            f"**Blocked By:** {args.model}",
+            f"**Human Intervention Reason:** {reason}",
+        ])
+        write_and_build_transaction(checklist=checklist, original=original,
+            updated=replace_task(original, task, body), builder=args.builder,
+            repo_root=args.repo_root, no_build=args.no_build)
+    print(f"Blocked: {task.task_id} — {task.title}\nHuman action: {reason}")
+    return 0
+
+
 def release(args: argparse.Namespace) -> int:
     checklist: Path = args.checklist
     lock_path = lock_path_for(checklist)
@@ -576,6 +605,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_common_paths(p_claim, defaults)
     p_claim.set_defaults(func=claim)
+
+    p_block = subparsers.add_parser("block", help="Block your active task for required human intervention.")
+    p_block.add_argument("task_id")
+    p_block.add_argument("--model", required=True)
+    p_block.add_argument("--reason", required=True)
+    add_common_paths(p_block, defaults)
+    p_block.set_defaults(func=block)
 
     p_complete = subparsers.add_parser(
         "complete",

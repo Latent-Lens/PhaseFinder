@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhaseFinder Gap Audit</title>
+<style>
+/* Layout: one reading column for narrative, a wide band for the overview table, two-column task cards. */
+:root {
+  --bg: #f7f8fb;
+  --panel: #ffffff;
+  --text: #172033;
+  --muted: #5b6579;
+  --border: #c9d1e0;
+  --border_strong: #7386aa;
+  --accent: #2563eb;
+  --accent_soft: #e8effd;
+  --teal: #01828a;
+  --p1: #b42318;
+  --p1_soft: #fdecea;
+  --p2: #9a5b00;
+  --p2_soft: #fdf3e1;
+  --p3: #475569;
+  --p3_soft: #eef1f5;
+  --ok: #047857;
+  --ok_soft: #e6f5ef;
+  --font_body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font_mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141c; --panel: #161d28; --text: #e8ecf4; --muted: #a3aec2;
+    --border: #38424f; --border_strong: #6b788c; --accent: #7aa8f5; --accent_soft: #1d2a3f;
+    --teal: #3fd0d9; --p1: #ff9b91; --p1_soft: #3a1d1b; --p2: #f0b64a; --p2_soft: #33280f;
+    --p3: #b4bfd1; --p3_soft: #222b38; --ok: #5ed6a4; --ok_soft: #15302a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141c; --panel: #161d28; --text: #e8ecf4; --muted: #a3aec2;
+  --border: #38424f; --border_strong: #6b788c; --accent: #7aa8f5; --accent_soft: #1d2a3f;
+  --teal: #3fd0d9; --p1: #ff9b91; --p1_soft: #3a1d1b; --p2: #f0b64a; --p2_soft: #33280f;
+  --p3: #b4bfd1; --p3_soft: #222b38; --ok: #5ed6a4; --ok_soft: #15302a;
+  color-scheme: dark;
+}
+body { margin: 0; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font_body); font-size: 15px; line-height: 1.6; padding-inline: 16px; padding-block: 0 64px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 48px; }
+.narrow { max-width: 72ch; }
+h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; margin: 0; }
+h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.35rem; font-weight: 600; }
+h3 { font-size: 1.1rem; font-weight: 600; }
+h4 { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+p { margin: 0; }
+code, .tid { font-family: var(--font_mono); font-size: 0.86em; }
+code { background: var(--accent_soft); padding: 0.05em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+section { display: grid; gap: 16px; }
+
+.masthead { padding-block: 40px 8px; border-bottom: 2px solid var(--text); display: grid; gap: 12px; }
+.eyebrow { font-family: var(--font_mono); font-size: 0.8rem; color: var(--teal); letter-spacing: 0.02em; }
+.lede { font-size: 1.05rem; color: var(--muted); max-width: 72ch; }
+
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0; border: 1px solid var(--border); background: var(--panel); border-radius: 8px; overflow: hidden; }
+.figure { padding: 16px 20px; border-right: 1px solid var(--border); display: grid; gap: 2px; min-width: 0; }
+.figure:last-child { border-right: none; }
+.figure .n { font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.figure .l { font-size: 0.85rem; color: var(--muted); }
+.prio_bar { display: flex; gap: 3px; height: 30px; border-radius: 6px; overflow: hidden; }
+.seg { display: flex; align-items: center; justify-content: center; font-family: var(--font_mono); font-size: 0.78rem; font-weight: 500; min-width: 60px; }
+.seg.p1 { background: var(--p1_soft); color: var(--p1); }
+.seg.p2 { background: var(--p2_soft); color: var(--p2); }
+.seg.p3 { background: var(--p3_soft); color: var(--p3); }
+
+.prio { display: inline-block; font-family: var(--font_mono); font-size: 0.75rem; font-weight: 500; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.prio.p1 { color: var(--p1); background: var(--p1_soft); }
+.prio.p2 { color: var(--p2); background: var(--p2_soft); }
+.prio.p3 { color: var(--p3); background: var(--p3_soft); }
+
+.gaps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.gap { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.gap .tid { color: var(--accent); }
+
+.table_wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+tr:last-child > * { border-bottom: none; }
+thead th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; background: var(--bg); }
+td.num { font-variant-numeric: tabular-nums; text-align: right; }
+.overview td:first-child, .overview td:nth-child(2) { white-space: nowrap; }
+.overview { min-width: 820px; }
+.plain th[scope="row"] { font-weight: 600; width: 32%; }
+.plain { min-width: 620px; }
+
+.task { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 24px; display: grid; gap: 14px; scroll-margin-top: 16px; }
+.task_head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.task_head .tid { font-weight: 500; color: var(--accent); font-size: 0.95rem; }
+.area { font-size: 0.8rem; color: var(--muted); }
+.problem { max-width: 80ch; }
+.task_grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+.col { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.field ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+.field p + ul { margin-top: 6px; }
+ul.boxes { list-style: none; padding: 0; gap: 8px; }
+ul.boxes li { display: grid; grid-template-columns: 16px 1fr; gap: 10px; align-items: start; }
+.box { width: 14px; height: 14px; margin-top: 5px; border: 1.5px solid var(--border_strong); border-radius: 3px; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; margin: 0; padding-top: 14px; border-top: 1px solid var(--border); }
+.meta div { display: grid; gap: 2px; min-width: 0; }
+.meta dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.meta dd { margin: 0; font-size: 0.9rem; }
+
+.state { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.state.pass { color: var(--ok); background: var(--ok_soft); }
+.state.expected { color: var(--p2); background: var(--p2_soft); }
+.next { background: var(--accent_soft); border-radius: 8px; padding: 16px 18px; display: grid; gap: 8px; }
+.next pre { margin: 0; overflow-x: auto; font-family: var(--font_mono); font-size: 0.85rem; }
+ol.method { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 80ch; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <span class="eyebrow">docs/audits/master_checklist.md · Section 12 · 2026-10-03</span>
+    <h1>PhaseFinder Gap Audit</h1>
+    <p class="lede">A whole-repository gap analysis added ten tasks to the master checklist. Before it, every task an agent could close was already closed, and the 21 still open were waiting on a person. Each new task below cites file-and-line evidence, says why it matters, and lists acceptance boxes that can be checked one at a time. None of them needs a human intervention root.</p>
+  </header>
+
+  <section aria-labelledby="summary_h">
+    <h2 id="summary_h" class="sr_heading">Summary</h2>
+    <div class="figures">
+      <div class="figure"><span class="n">10</span><span class="l">tasks added (Section 12)</span></div>
+      <div class="figure"><span class="n">46</span><span class="l">acceptance boxes, all open</span></div>
+      <div class="figure"><span class="n">97 → 107</span><span class="l">tasks in the tracker</span></div>
+      <div class="figure"><span class="n">0 → 10</span><span class="l">open tasks an agent can claim</span></div>
+    </div>
+    <div class="prio_bar" role="img" aria-label="Priority split: 1 P1, 7 P2, 2 P3"><span class="seg p1" style="flex:1" title="P1: 1">P1 · 1</span><span class="seg p2" style="flex:7" title="P2: 7">P2 · 7</span><span class="seg p3" style="flex:2" title="P3: 2">P3 · 2</span></div>
+    <p class="narrow" style="color:var(--muted);font-size:0.9rem">The checklist's legend: P1 can change results, lose reproducibility, hide failures or block supported users. P2 is robustness, security hardening or maintainability. P3 is optimization, documentation or developer experience. No P0 was warranted.</p>
+  </section>
+
+  <section aria-labelledby="method_h">
+    <h2 id="method_h">How the intended product was established</h2>
+    <ol class="method">
+      <li>Product intent came from the current sources: <code>README.md</code> (scope, browser support, workflow), <code>docs/plans/phasefinder_design.md</code> (hard constraints and the "honest reporting" principle), the definition of done and E2E matrix in <code>cell_cycle_modeling_plan.md</code> §11.4 and §13, <code>scientific-result-contract.md</code>, and the 14 shipped Help pages.</li>
+      <li>Owner decisions on record set the boundaries: D1 (no release before validation), D2 (ask the user to identify a lone peak), D3 (Chrome, Edge, Firefox, Safari), and the 2026-09-24 desktop-only scope with no new accessibility work.</li>
+      <li>The live code, tests and four GitHub workflows determined what exists. Each candidate finding was checked against the code and against all 97 existing task IDs and their acceptance boxes. Archived audits were used only for ID collisions.</li>
+      <li>Read-only gates were run before editing: docs, DOM, imports, lint and <code>test:ci</code> all passed.</li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="gaps_h">
+    <h2 id="gaps_h">Largest gaps</h2>
+    <div class="gaps">
+      <div class="gap"><a class="tid" href="#CI-11">CI-11 · P1</a><h3>The modeling workflow is never tested before merge</h3><p>Every browser-matrix leg passes <code>--skip-modeling</code>, and the docs, DOM, import, privacy and <code>tests/ci</code> gates run only inside the release workflow.</p></div>
+      <div class="gap"><a class="tid" href="#DOC-06">DOC-06 / TEST-06 · P2</a><h3>Owner decision D2 is undocumented and untested in the browser</h3><p>Help still says a lone peak is assumed to be G1, and no E2E test drives the Assign as G1/G2 flow.</p></div>
+      <div class="gap"><a class="tid" href="#TEST-07">TEST-07 · P2</a><h3>The default model is never fitted through the UI</h3><p>Every completed browser fit uses Watson Pragmatic. Dean–Jett–Fox, the model Help recommends, is covered only by unit tests.</p></div>
+      <div class="gap"><a class="tid" href="#PERF-03">PERF-03 · P2</a><h3>No measured ceiling at real file sizes</h3><p>The parser accepts 100 million events, but the largest per-file workflow ever measured is 60,000.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="overview_h">
+    <h2 id="overview_h">Tasks added</h2>
+    <div class="table_wrap">
+      <table class="overview">
+        <thead><tr><th>ID</th><th>Priority</th><th>Area</th><th>Title</th><th>Boxes</th><th>Depends on</th></tr></thead>
+        <tbody>
+<tr><td><a class="tid" href="#CI-11">CI-11</a></td><td><span class="prio p1">P1</span></td><td>Testing & CI</td><td>Pull-request CI skips the modeling E2E group and the repository's own static gates</td><td class="num">5</td><td>none. Complements READY-01 boxes 3–4 and BROWSER-01; replaces neither.</td></tr>
+<tr><td><a class="tid" href="#DOC-06">DOC-06</a></td><td><span class="prio p2">P2</span></td><td>User documentation</td><td>Help still tells users a lone peak is assumed to be G1</td><td class="num">4</td><td>none. The behaviour already ships under AMBIG-01.</td></tr>
+<tr><td><a class="tid" href="#TEST-06">TEST-06</a></td><td><span class="prio p2">P2</span></td><td>Testing</td><td>The owner-decided lone-peak workflow has no end-to-end test</td><td class="num">5</td><td>none. CI-11 makes the new sequence run on pull requests.</td></tr>
+<tr><td><a class="tid" href="#TEST-07">TEST-07</a></td><td><span class="prio p2">P2</span></td><td>Testing</td><td>No browser test completes a Dean–Jett, Dean–Jett–Fox or Watson Classic fit</td><td class="num">5</td><td>none. CI-11 makes it run on pull requests.</td></tr>
+<tr><td><a class="tid" href="#DOC-07">DOC-07</a></td><td><span class="prio p3">P3</span></td><td>User documentation</td><td>The first-analysis tutorial depends on repository files, and its numbers are untested</td><td class="num">4</td><td>DOC-06, if step 7 ends up describing the lone-peak alert.</td></tr>
+<tr><td><a class="tid" href="#DOC-08">DOC-08</a></td><td><span class="prio p3">P3</span></td><td>Developer documentation</td><td>The design reference and the result contract still describe fixed gaps as open</td><td class="num">6</td><td>none.</td></tr>
+<tr><td><a class="tid" href="#OBS-01">OBS-01</a></td><td><span class="prio p2">P2</span></td><td>Error reporting</td><td>Uncaught errors and failed module loads are invisible to the user</td><td class="num">4</td><td>none.</td></tr>
+<tr><td><a class="tid" href="#PERF-03">PERF-03</a></td><td><span class="prio p2">P2</span></td><td>Performance</td><td>No measured ceiling at real acquisition sizes, and the parser admits files far beyond anything tested</td><td class="num">4</td><td>none. Builds on PERF-02 and QC-08.</td></tr>
+<tr><td><a class="tid" href="#GATE-04">GATE-04</a></td><td><span class="prio p2">P2</span></td><td>Result integrity</td><td>Model-specific constraint checks run inside the worker instead of the shared preflight</td><td class="num">5</td><td>none.</td></tr>
+<tr><td><a class="tid" href="#DEP-01">DEP-01</a></td><td><span class="prio p2">P2</span></td><td>Supply chain</td><td>The only shipped third-party code is invisible to the SBOM, Dependabot and npm audit</td><td class="num">4</td><td>none.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="narrow" style="color:var(--muted);font-size:0.9rem">By area: testing and CI 3 (CI-11, TEST-06, TEST-07); documentation 3 (DOC-06, DOC-07, DOC-08); one each for error reporting, performance, result integrity and supply chain.</p>
+  </section>
+
+  <section aria-labelledby="detail_h">
+    <h2 id="detail_h">Task detail</h2>
+    
+<article class="task" id="CI-11">
+  <header class="task_head">
+    <span class="tid">CI-11</span>
+    <span class="prio p1">P1</span>
+    <span class="area">Testing & CI</span>
+  </header>
+  <h3>Pull-request CI skips the modeling E2E group and the repository's own static gates</h3>
+  <p class="problem">The checks that define "done" locally do not run on pull requests or on pushes to <code>main</code>. A regression in the modeling workflow, the Help/DOM contract, the import graph or the privacy denylist can be merged. The first automated run that would catch it is <code>npm run check</code> inside the release workflow, after the release tag already exists.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li>Every leg of <code>.github/workflows/browser-compatibility.yml</code> runs <code>drive_flow.py --browser … --skip-modeling --limited-media</code>. <code>tests/e2e/driving_code/drive_flow.py:223-225</code> then drops the <code>modeling</code> group, giving the reason "excluded from the non-scientific audit/compatibility gate". That group holds the 40 region-review, fit, residual, bulk-fit, ridge and session checks in <code>tests/e2e/driving_code/tests_modeling.py</code>. With <code>--data</code> omitted it runs on synthetic fixtures (<code>drive_flow.py:346-347</code>), so it needs no private data.</li><li>No PR or push workflow runs <code>npm run check:docs</code>, <code>check:dom</code>, <code>check:imports</code>, <code>check:privacy</code> or <code>test:ci</code> (67 tests under <code>tests/ci</code>). The only workflow that calls them is <code>deploy-release.yml:53</code> (<code>npm run check</code>). <code>node_build.yml</code> runs lint and build only. <code>security.yml</code> runs <code>check_supply_chain.py</code> and the fixture and flowio checks.</li><li><code>tests/e2e/driving_code/priority_batch_checks.py</code> covers real JSON/CSV/HTML/SVG downloads, malformed import, and OPFS commit failure and retry. It describes itself as "Run directly between full regression batches", and no npm script or workflow references it.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>The modeling workflow is the product. <code>cell_cycle_modeling_plan.md</code> §13 includes "full E2E" in its definition of done, and READY-01 box 3 asks for a full regression with no missing phase. Today these checks run automatically only at release time.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><p>Workflow and npm-script changes only, with no app code. Run the static gates and <code>test:ci</code> on every PR and push. Run <code>drive_flow.py</code> without <code>--skip-modeling</code> on at least the Chromium leg; other legs may keep skipping it if the reason is recorded. Run <code>priority_batch_checks.py</code> in an existing job.</p></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span>A PR/push workflow runs <code>npm run check:docs</code>, <code>check:dom</code>, <code>check:imports</code>, <code>check:privacy</code> and <code>npm run test:ci</code>. A deliberately broken DOM binding or Help label on a scratch branch makes that job fail.</span></li><li><span class="box" aria-hidden="true"></span><span>The Chromium leg of <code>browser-compatibility.yml</code> runs <code>drive_flow.py</code> without <code>--skip-modeling</code>, and its uploaded report records the <code>e2e:modeling</code> phase as passed, not skipped.</span></li><li><span class="box" aria-hidden="true"></span><span>Any leg that still skips the modeling group states the reason in the generated <code>browser-compatibility.md</code> table, not only in the workflow file.</span></li><li><span class="box" aria-hidden="true"></span><span><code>priority_batch_checks.py</code> has an npm script, runs in CI, and a failed check in it fails the job.</span></li><li><span class="box" aria-hidden="true"></span><span>The wall-clock time the new steps add to the PR run is measured and recorded in this task.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>one green workflow run that includes the new steps, and one red run showing that the gate fails closed.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none. Complements READY-01 boxes 3–4 and BROWSER-01; replaces neither.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>Found by comparing <code>package.json</code> <code>check</code> with the four workflow files. TEST-01 (local definition of done), TEST-03 (suite hygiene), BROWSER-01 (browser pass rate) and READY-01 (release gate) do not cover pull-request CI.</dd></div>
+    <div><dt>Recommendation</dt><dd>Add the cheap static gates to every PR first. Then turn on the modeling group for Chromium and measure its cost before adding it to the other legs.</dd></div>
+  </dl>
+</article>
+<article class="task" id="DOC-06">
+  <header class="task_head">
+    <span class="tid">DOC-06</span>
+    <span class="prio p2">P2</span>
+    <span class="area">User documentation</span>
+  </header>
+  <h3>Help still tells users a lone peak is assumed to be G1</h3>
+  <p class="problem">Owner decision D2 (2026-09-25), implemented under AMBIG-01, changed what happens with a lone peak. When the detector finds one resolvable peak on a flat background, it now reports <code>single_peak_unassigned</code>, proposes no G1/G2 regions, shows an alert on the plot, and blocks fitting until the user clicks <strong>Assign as G1</strong> or <strong>Assign as G2</strong>. The shipped Help still describes the retired behaviour and never mentions those buttons.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li><code>help/help-modeling.html:122</code>: "When a sample shows only one peak, PhaseFinder assumes it is G1 and places G2/M at twice that position … move the regions manually if you know the biology."</li><li>Current behaviour lives in <code>js/analysis/cell_cycle/peak_detection.js:756</code> (<code>single_peak_unassigned</code>), <code>peak_review_ui.js:57</code> ("Single peak — identity required") and <code>:550-559</code> (the assign handlers), <code>result_contract.js:598</code> (fit refused until assigned) and <code>js/plotting/render.js:485</code> (the plot alert).</li><li>No page under <code>help/</code> contains "Assign as G1", "Assign as G2" or "identity required".</li><li><code>docs/plans/phasefinder_design.md:146</code> repeats the retired claim; DOC-08 covers that file.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>The design names bench biologists as the users. Help that describes the old silent G1 guess hides the safeguard D2 added. A user who reaches the "identity required" state finds no explanation of it.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><p><code>help/help-modeling.html</code>, plus <code>help/help-troubleshooting.html</code> if it lists reasons a fit is blocked. The text should explain:</p><ul><li>the two lone-peak states: <code>single_peak_unassigned</code>, and the review-and-warn <code>inferred_g2</code> state that is still used when weaker candidate peaks exist;</li><li>what the plot alert means;</li><li>what the Assign buttons do, including the 2× and 0.5× region projection;</li><li>that Fit Current and Fit All skip the sample until it is assigned;</li><li>that the assignment is recorded, with a qualifying warning, in the result, the exports and the session.</li></ul></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span><code>help-modeling.html</code> no longer says PhaseFinder assumes a lone peak is G1. It describes the D2 behaviour and names the "Assign as G1" and "Assign as G2" buttons exactly as <code>index.html</code> labels them.</span></li><li><span class="box" aria-hidden="true"></span><span>The page distinguishes <code>single_peak_unassigned</code> (no regions, fit blocked) from <code>inferred_g2</code> (regions proposed, review required, warning kept), consistent with <code>peak_detection.js</code>.</span></li><li><span class="box" aria-hidden="true"></span><span><code>npm run check:docs</code> passes, including its Help UI-label check for the newly named buttons.</span></li><li><span class="box" aria-hidden="true"></span><span>Searching <code>help/</code> for "assumes it is G1" returns no matches.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the <code>check:docs</code> output, plus TEST-06's browser check showing the controls this text names.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none. The behaviour already ships under AMBIG-01.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>AMBIG-01 closed on 2026-09-26 with code and unit tests, but its acceptance boxes did not include Help. DOC-02 (closed) predates D2.</dd></div>
+    <div><dt>Recommendation</dt><dd>Land this in the same change as TEST-06, so the documented flow and the tested flow match.</dd></div>
+  </dl>
+</article>
+<article class="task" id="TEST-06">
+  <header class="task_head">
+    <span class="tid">TEST-06</span>
+    <span class="prio p2">P2</span>
+    <span class="area">Testing</span>
+  </header>
+  <h3>The owner-decided lone-peak workflow has no end-to-end test</h3>
+  <p class="problem">The D2 flow is detect, alert, assign identity, fit, export, then save and restore. Only unit tests on in-memory histograms cover it. No browser test drives it, and no FCS fixture produces a lone peak.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li><code>single_peak_unassigned</code> and <code>assign_lone_peak_identity</code> appear in <code>unit_tests_cell_cycle_peak_detection.py</code>, <code>unit_tests_cell_cycle_modeling_state.py</code> and <code>unit_tests_session.py</code>, but nowhere under <code>tests/e2e/driving_code/</code>.</li><li><code>tests/validation/validation_test_data/synthetic_fcs/files/</code> has no lone-peak fixture. <code>arrest_g1_95_04_01.fcs</code> still carries weak S and G2 events.</li><li>The UI wiring in <code>peak_review_ui.js</code>, <code>render.js:485</code> (the alert and its assign action) and <code>index.html</code> <code>#single_peak_review_actions</code> is never rendered by a unit test.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>This is the one place where an owner decision changed what the app may report. A DOM or wiring regression could let a lone peak be fitted silently, or leave the user with no way to assign it, and no test would fail.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><p>Add a redistributable synthetic lone-peak fixture through <code>generate_fixtures.py</code>, with its manifest entry and truth JSON. Add one E2E sequence to <code>tests_modeling.py</code>.</p></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span><code>generate_fixtures.py</code> generates a synthetic lone-peak fixture (one population, flat background, no second candidate peak). The manifest lists it with <code>contains_real_data: false</code>, and <code>npm run check:fixtures</code> passes.</span></li><li><span class="box" aria-hidden="true"></span><span>Running Detect Peaks on that fixture shows the "identity required" state in the review panel and the alert on the plot, and leaves the four region inputs empty.</span></li><li><span class="box" aria-hidden="true"></span><span>Fit Current is refused with the missing-regions reason, and Fit All Samples reports that sample as not fitted instead of fitting it.</span></li><li><span class="box" aria-hidden="true"></span><span>After "Assign as G2", the proposed G1 region sits near 0.5× the peak and the G2 region on the peak. The fit then completes, and the result carries the ambiguous-single-peak warning and the user-assigned identity.</span></li><li><span class="box" aria-hidden="true"></span><span>A JSON export of that fit contains the assigned identity (<code>userAssignedPeakIdentity</code>). After saving and reloading the session, the assignment is restored without asking again.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the new checks pass in a full <code>drive_flow.py</code> run with the modeling group included.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none. CI-11 makes the new sequence run on pull requests.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>AMBIG-01 tests this only at unit level. STATE-02 covers detection-status persistence and TEST-02 covers fixture governance; neither tests this flow in the browser.</dd></div>
+    <div><dt>Recommendation</dt><dd>Build the fixture first and confirm with a detector unit test that it yields <code>single_peak_unassigned</code>. Then add the browser sequence.</dd></div>
+  </dl>
+</article>
+<article class="task" id="TEST-07">
+  <header class="task_head">
+    <span class="tid">TEST-07</span>
+    <span class="prio p2">P2</span>
+    <span class="area">Testing</span>
+  </header>
+  <h3>No browser test completes a Dean–Jett, Dean–Jett–Fox or Watson Classic fit</h3>
+  <p class="problem">Every browser test that completes a fit uses Watson Pragmatic. The model Help recommends as the default, Dean–Jett–Fox, has never been fitted through the UI by any gate, and neither have Dean–Jett or Watson Classic. The plan's E2E requirement that switching models keeps cached fits and regions is not tested either.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li><code>tests/e2e/driving_code/tests_modeling.py</code> selects <code>watson_pragmatic</code> at :199, :310, :868 and :1062. It selects <code>dean_jett</code> only at :801, to trigger the infeasible-ratio error. <code>dist_smoke.py:100</code> also fits <code>watson_pragmatic</code>. <code>perf_profile.py</code> fits <code>dean_jett</code>, but it is a measurement tool, not a gate.</li><li><code>help/help-cell-cycle-accuracy.html</code> §7 calls Dean–Jett–Fox "the sensible default", and <code>phasefinder_design.md</code> §5.3 lists it as the default choice.</li><li><code>cell_cycle_modeling_plan.md</code> §11.4 requires that "model switching preserves cached fits and regions". No E2E check asserts this.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>Unit tests check the model math, but not the parts that differ per model in the UI: the component overlay, model labels, per-model table columns and export. A UI regression that only affects the most-used models would pass every gate.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><p>One E2E sequence on the existing <code>truth_clean_50_30_20.fcs</code> fixture. It fits three models in turn on the same accepted regions, then switches back to a model that is already fitted.</p></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span>Fit Current with Dean–Jett–Fox completes. The result header names the model, the fractions render with their qualification state, and the plot draws that model's G1, S and G2/M components.</span></li><li><span class="box" aria-hidden="true"></span><span>The same holds for Dean–Jett and for Watson Classic, on the same accepted regions.</span></li><li><span class="box" aria-hidden="true"></span><span>Switching the model dropdown back to an already-fitted model shows its cached result without starting a fit, and the accepted regions do not change.</span></li><li><span class="box" aria-hidden="true"></span><span>For each of the three fits, the per-model fraction columns in the table, the sidebar summary and the JSON export report the same fractions at the displayed precision.</span></li><li><span class="box" aria-hidden="true"></span><span>Each fit's check records the fitted fractions next to the fixture's planted 50/30/20 truth in the report detail, without adding a new accuracy tolerance.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the new checks pass in a full <code>drive_flow.py</code> run.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none. CI-11 makes it run on pull requests.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>The browser surface-agreement check in <code>tests_modeling.py</code> ("CI-10/UI-13: stored result, ridge badge, table fractions, and export labels agree") runs on a Watson Pragmatic fit only. No existing task names this coverage gap.</dd></div>
+    <div><dt>Recommendation</dt><dd>Reuse the region setup from the existing Watson sequence, so all four models fit identical inputs.</dd></div>
+  </dl>
+</article>
+<article class="task" id="DOC-07">
+  <header class="task_head">
+    <span class="tid">DOC-07</span>
+    <span class="prio p3">P3</span>
+    <span class="area">User documentation</span>
+  </header>
+  <h3>The first-analysis tutorial depends on repository files, and its numbers are untested</h3>
+  <p class="problem"><code>help/help-first-analysis.html</code> ships in the deployed Help, but it tells users to open fixture files that exist only in the source repository. It also states exact expected outcomes that no test checks, and step 7 was written before D2 changed lone-peak detection.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li><code>help-first-analysis.html:47</code> sends users to <code>tests/validation/validation_test_data/synthetic_fcs/files/truth_clean_50_30_20.fcs</code>, and <code>:58</code> says "Locate the file … in your file browser." <code>dist/</code> contains no <code>.fcs</code> files.</li><li>The page states exact outcomes: G1 region about 53,760 to 74,240 (<code>:123</code>); 49.1 / 32.5 / 18.4 % with ratio 2.01 and a named convergence reason (<code>:147</code>); reduced deviance about 1.1 (<code>:162</code>). Only the generator, manifest and truth JSON reference these fixtures; no test drives the tutorial.</li><li>Step 7 (<code>:175</code>) says the detector "automatically infers G2 at 2× the G1 position" on <code>arrest_g1_95_04_01.fcs</code>. The page was written on 2026-09-08. D2's lone-peak change landed on 2026-09-26, and nobody has checked the step since.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>DOC-04 closed this tutorial as reproducible "with exact expected values", but a user of the deployed site cannot get the files. A tutorial whose stated numbers drift from the app teaches users to distrust correct output.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><ul><li>Make the two fixtures downloadable from the deployed tutorial page, for example by copying them into the build with download links.</li><li>Add one automated browser check that follows the tutorial.</li><li>Correct any value on the page that the check does not reproduce.</li></ul></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span>A user of the built site can download both tutorial fixtures from the tutorial page. <code>npm run check:dist</code> lists them and <code>npm run check:privacy</code> passes.</span></li><li><span class="box" aria-hidden="true"></span><span>The tutorial no longer tells deployed users to look for files under <code>tests/validation/…</code>.</span></li><li><span class="box" aria-hidden="true"></span><span>An automated browser check follows tutorial steps 1–7 on both fixtures. It asserts every value the page states, at the precision the page states it: event count, auto-selected channel, QC retention, detected region bounds, Dean–Jett fractions, ratio, convergence reason and status, reduced deviance, and the step-7 detection state and warnings.</span></li><li><span class="box" aria-hidden="true"></span><span>Any stated value the check does not reproduce is corrected on the page in the same change.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the passing tutorial check and the <code>check:dist</code> file list.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>DOC-06, if step 7 ends up describing the lone-peak alert.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>DOC-04 created the page; its boxes did not require shipping the fixtures or testing the numbers.</dd></div>
+    <div><dt>Recommendation</dt><dd>Generate the expected values from the automated run and copy them into the page, not the other way round.</dd></div>
+  </dl>
+</article>
+<article class="task" id="DOC-08">
+  <header class="task_head">
+    <span class="tid">DOC-08</span>
+    <span class="prio p3">P3</span>
+    <span class="area">Developer documentation</span>
+  </header>
+  <h3>The design reference and the result contract still describe fixed gaps as open</h3>
+  <p class="problem"><code>docs/plans/phasefinder_design.md</code> describes itself as "the reference" for what PhaseFinder is. Several of its current-tense statements describe gaps that closed tasks have fixed, and the scientific result contract points two statements at the wrong task.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li>In <code>phasefinder_design.md</code>:</li><li><code>:35</code> says 137 modules and 428 edges; <code>npm run check:imports</code> reports 120 and 424.</li><li><code>:71</code> says 225 static IDs; <code>npm run check:dom</code> reports 243.</li><li><code>:101</code> still lists the PERF-01 main-thread fallback as a "Known gap".</li><li><code>:140</code> says the smoothing kernel is "never deconvolved"; MODEL-03 fixed that.</li><li><code>:146</code> says a lone peak is assumed to be G1; owner decision D2 superseded that.</li><li><code>:235</code> describes UI-01 as "the gap that matters".</li><li><code>:261</code>, §9 "Designs for features not yet built", lists the residual panel, dark theme and versioned export, which UI-13, UI-12 and FEAT-02 have all shipped.</li><li><code>:338</code> says there are "no uncertainty intervals on any reported fraction", although UNC-01 shipped them.</li><li>The §5.5 accuracy table is undated and predates MODEL-01, MODEL-03 and MODEL-11.</li><li><code>scientific-result-contract.md:38</code> says "Broader implementation-identity tracking remains STATE-02", and <code>:337</code> cites STATE-02 for the same point. STATE-02 is closed and dealt with detection status. Source-commit identity is already implemented in <code>js/session/core.js:232</code> and <code>js/session/modeling_session.js:279</code>.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>Contributors and agents use this document to decide what is left to build. As written, it sends them to redo work that is finished.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><p>Only these two documents. Update current-state statements, put dates on historical measurements, and replace hard-coded counts with a pointer to the command or document that produces them.</p></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span>Each of the eight design-doc statements listed above either describes current behaviour, citing the task that changed it, or is labelled historical with its date.</span></li><li><span class="box" aria-hidden="true"></span><span>§9 is retitled or reorganized so it no longer lists shipped features as "not yet built".</span></li><li><span class="box" aria-hidden="true"></span><span>The design doc no longer hard-codes module, edge or DOM-ID counts, or gives each count next to the command that produces it.</span></li><li><span class="box" aria-hidden="true"></span><span>The §5.5 accuracy table is dated and attributed to the run that produced it, or replaced by a pointer to current validation evidence.</span></li><li><span class="box" aria-hidden="true"></span><span>The contract's two STATE-02 references describe the implemented source-commit tracking instead.</span></li><li><span class="box" aria-hidden="true"></span><span><code>npm run check:docs</code> passes.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the diff of the two files and the <code>check:docs</code> output.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>DOC-03 refreshed onboarding and the import-graph docs on 2026-08-21, before most of these tasks closed. No open task covers the design doc.</dd></div>
+    <div><dt>Recommendation</dt><dd>Treat §9 as history. Each design there now ships, so point to the code and the closing task.</dd></div>
+  </dl>
+</article>
+<article class="task" id="OBS-01">
+  <header class="task_head">
+    <span class="tid">OBS-01</span>
+    <span class="prio p2">P2</span>
+    <span class="area">Error reporting</span>
+  </header>
+  <h3>Uncaught errors and failed module loads are invisible to the user</h3>
+  <p class="problem">The app has a diagnostics log for users to copy into bug reports, but only errors passed explicitly to <code>set_status_bar()</code> reach it. An exception in an event handler, an unhandled promise rejection, or a failed lazy import of the analysis pipeline produces no message, no log entry, and sometimes a control that looks applied when it is not.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li>No <code>window</code> <code>error</code> or <code>unhandledrejection</code> listener exists in <code>js/</code>. The only error listeners are on individual workers: <code>fit_client.js:89</code>, <code>cloccs_client.js:56</code>, <code>session/file_cache.js:430</code> and <code>io/channel_loading.js:101</code>.</li><li><code>#status_diagnostics_log</code> (<code>index.html:916-919</code>) is written only by <code>set_status_bar()</code> (<code>js/ui/status_channels.js:246-266</code>).</li><li>If the import fails, <code>load_pipeline()</code> (<code>js/analysis/pipeline/pipeline_loader.js</code>) hides its progress overlay and rethrows. Ten call sites in five modules depend on it (<code>pipeline_ui.js</code>, <code>peak_review_ui.js</code>, <code>modeling_ui.js</code>, <code>bin_settings_sync.js</code> and <code>session/modeling_session.js</code>). For example, the QC toggle handler at <code>js/analysis/pipeline/pipeline_ui.js:1018-1050</code> awaits it without a <code>catch</code>.</li><li>Production assets are content-hashed and served <code>immutable</code> (<code>dist/_headers</code>). A tab left open across a new deployment can therefore request a pipeline chunk that the new deployment no longer serves.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>The users are not developers. A button that does nothing and shows no message looks like a hang, and the diagnostics log built for exactly this case receives nothing. This must stay local-only, with no network error reporting.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><p>Add one global handler pair that routes to <code>set_status_bar(…, true, …, error)</code> with de-duplication. Give <code>load_pipeline</code> failures an actionable message (reload the page) and leave the triggering control in its previous state. No telemetry.</p></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span>A browser test throws inside a click handler and rejects a promise from one. Both errors appear in the status bar with error styling and in <code>#status_diagnostics_log</code> with their stack text. Repeating the same error does not add an unbounded number of log entries.</span></li><li><span class="box" aria-hidden="true"></span><span>With the pipeline chunk request aborted by a Playwright route, clicking a QC filter or Detect Peaks shows a message asking the user to reload. The progress overlay is hidden, and the QC button does not show an applied state.</span></li><li><span class="box" aria-hidden="true"></span><span>After the route is restored, the same action succeeds without reloading the page, through the loader's existing retry path.</span></li><li><span class="box" aria-hidden="true"></span><span>The same test's request log shows that the error path makes no network request.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the new browser checks pass in the source tree and in the built <code>dist/</code>.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>UI-02 fixed bulk-fit failure attribution and PERF-01 fixed worker failures. Neither covers errors outside a worker or the lazy pipeline import.</dd></div>
+    <div><dt>Recommendation</dt><dd>Keep the handler small: route errors to the existing status and log channels, and add no new UI.</dd></div>
+  </dl>
+</article>
+<article class="task" id="PERF-03">
+  <header class="task_head">
+    <span class="tid">PERF-03</span>
+    <span class="prio p2">P2</span>
+    <span class="area">Performance</span>
+  </header>
+  <h3>No measured ceiling at real acquisition sizes, and the parser admits files far beyond anything tested</h3>
+  <p class="problem">The parser accepts files up to 100 million events and 2 GiB of DATA. The largest per-file size whose whole workflow has been measured is 60,000 events. It is not known how the app behaves at the sizes core facilities actually acquire, or what happens when the browser runs short of memory.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li><code>FCS_LIMITS</code> in <code>js/fcs/parser.js:35-44</code> sets <code>maxEvents: 100_000_000</code>, <code>maxDataBytes</code> to 2 GiB and <code>maxWorkingBytes</code> to 2 GiB.</li><li>The PERF-02 harness defaults to 60,000 events per large file (<code>tests/e2e/driving_code/perf_profile.py:495</code>). Its recorded operating point is 45 files and 540,000 events in total.</li><li>QC-08 timed only peak-tracking Time QC, on one 505,678-event file. The 30-sample reference set already contains files of that size.</li><li>Nothing records load, plot, QC, detection, fit or session-save time, or peak heap, at 1 million events per file or more.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>The design commits to local, in-browser analysis for bench biologists and core staff. If a large file exhausts browser memory partway through an analysis, the user loses the session state they have not saved. A documented ceiling and a warning before decoding prevent that.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><ul><li>Extend <code>perf_profile.py</code>, or add a sibling script, with synthetic 1M- and 5M-event fixtures generated at run time.</li><li>Record time and heap for each stage.</li><li>Document the supported ceiling.</li><li>Warn or refuse with a typed error before decoding a file beyond the ceiling.</li><li>Align <code>FCS_LIMITS</code> with the measured ceiling, or document why the parser limit stays higher.</li></ul></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span>Profile runs on synthetic single files of 1,000,000 and 5,000,000 events record wall time for load and decode, first plot, each QC gate, peak detection, one Dean–Jett–Fox fit and session save, plus peak JS heap. The results are saved under <code>docs/audits/baselines/</code>.</span></li><li><span class="box" aria-hidden="true"></span><span>README or the Help troubleshooting page states a supported per-file event ceiling and a total loaded-event ceiling for the reference machine, citing the measurement behind each.</span></li><li><span class="box" aria-hidden="true"></span><span>Loading a file above the per-file ceiling shows a visible warning or a typed refusal before DATA is decoded. A test covers this using a header-only or sparse fixture, with no multi-GB file in the repository.</span></li><li><span class="box" aria-hidden="true"></span><span><code>FCS_LIMITS.maxEvents</code> and <code>maxWorkingBytes</code> match the measured ceilings, or the README states why the parser limit is intentionally higher.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the baseline report, the ceiling test, and the documentation diff.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none. Builds on PERF-02 and QC-08.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none. The figures are for the same reference machine QC-08 used.</dd></div>
+    <div><dt>Overlap check</dt><dd>PERF-02 measured interaction costs at 60,000 events per file. QC-08 set a budget for one gate at 500,000 events. Neither covers the end-to-end ceiling or what happens above it.</dd></div>
+    <div><dt>Recommendation</dt><dd>Measure first. Then set the ceiling from the measurements, rather than tuning code toward a number chosen in advance.</dd></div>
+  </dl>
+</article>
+<article class="task" id="GATE-04">
+  <header class="task_head">
+    <span class="tid">GATE-04</span>
+    <span class="prio p2">P2</span>
+    <span class="area">Result integrity</span>
+  </header>
+  <h3>Model-specific constraint checks run inside the worker instead of the shared preflight</h3>
+  <p class="problem">The result contract says the shared preflight should catch infeasible model settings before any numerical work starts. It does not. Each model throws an untyped error from inside the fit worker, and bulk fitting counts such a sample as a numerical failure.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li><code>docs/scientific-result-contract.md:56-57</code>: "Model-specific constraint validation continues to be performed by each registered model before numerical fitting; moving those validators behind the common preflight is still outstanding."</li><li><code>model_preflight()</code> (<code>js/analysis/cell_cycle/result_contract.js:561</code>) checks only that the configuration is an object of finite numbers (<code>:716-717</code>).</li><li>G2:G1 ratio feasibility throws a plain <code>Error</code> inside the model (<code>js/analysis/cell_cycle/models/shared.js:190</code> and <code>:203</code>, called as described at <code>dean_jett.js:279-287</code>).</li><li>Bulk fitting maps that error to the generic <code>fit_failed</code> status and <code>bulk_fit_failed</code> code (<code>modeling_ui.js:897-901</code>).</li><li>The E2E check "An infeasible ratio constraint surfaces a clear inline error" (<code>tests_modeling.py:828</code>) covers only the single-fit message.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>The contract is the place where PhaseFinder decides what may be reported, and it lists this as outstanding. Today a sample whose settings cannot work is counted as a fit failure, and it costs a worker round-trip.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><ul><li>Registry entries gain an optional pure validator over configuration, regions and histogram, which <code>model_preflight()</code> calls.</li><li>Add a new <code>RESULT_REASON</code> code, and give it its own term in the bulk-fit summary.</li><li>Move the checks, but do not change the models' numerical code.</li><li>Update the contract document.</li></ul></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span>For Dean–Jett and Dean–Jett–Fox, <code>model_preflight()</code> returns a typed reason (a new <code>RESULT_REASON</code> code) for an infeasible locked or bounded G2:G1 ratio. A unit test confirms this happens without any fit-worker dispatch.</span></li><li><span class="box" aria-hidden="true"></span><span><code>summarize_bulk_fit_outcomes()</code> reports such samples under their own term, not "fit failed". A unit test covers this.</span></li><li><span class="box" aria-hidden="true"></span><span>The existing E2E infeasible-ratio check still passes, with the same user-visible message.</span></li><li><span class="box" aria-hidden="true"></span><span>Every registered per-sample model either declares a validator or is listed in a unit test as having no model-specific constraints.</span></li><li><span class="box" aria-hidden="true"></span><span><code>scientific-result-contract.md</code> no longer lists this item as outstanding.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the unit tests, plus a full <code>drive_flow.py</code> run with the modeling group included.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>GATE-01 built the contract and GATE-02 handled uncertainty qualification. Neither moved model validators into the preflight, and the contract still lists this as open.</dd></div>
+    <div><dt>Recommendation</dt><dd>Start with the ratio checks that <code>shared.js</code> already implements; they are the only model-specific constraints that throw today.</dd></div>
+  </dl>
+</article>
+<article class="task" id="DEP-01">
+  <header class="task_head">
+    <span class="tid">DEP-01</span>
+    <span class="prio p2">P2</span>
+    <span class="area">Supply chain</span>
+  </header>
+  <h3>The only shipped third-party code is invisible to the SBOM, Dependabot and npm audit</h3>
+  <p class="problem">D3 is the only third-party library in the production bundle. It is vendored as a file rather than declared as a dependency, so none of the repository's supply-chain controls see it. Its bytes are not pinned to a recorded hash, and nothing reports an update or advisory for it.</p>
+  <div class="task_grid">
+    <div class="col">
+      <div class="field"><h4>Evidence in the repository</h4><ul><li><code>js/vendor/d3.min.js</code> begins <code>/* esm.sh - d3@7.9.0 */</code> and is bundled into production through the alias at <code>vite.config.js:69-71</code>.</li><li><code>package.json</code> lists only <code>eslint</code>, <code>globals</code> and <code>vite</code>, and does not list <code>d3</code>. As a result, <code>.github/dependabot.yml</code> (npm ecosystem) and <code>npm audit</code> (<code>security.yml:29</code>) never examine it.</li><li>The generated <code>dist/sbom.cdx.json</code> lists 116 components, none of them named d3.</li><li><code>scripts/check_supply_chain.py</code> never references the vendored file.</li><li><code>docs/dependency-policy.md</code> requires maintainer review for "Major updates to … D3", but describes no way to learn that an update or advisory exists.</li></ul></div>
+      <div class="field"><h4>Why it matters</h4><p>This is the only third-party code a user's browser runs. The SBOM and supply-chain checks exist to account for that code, and right now they cover the dev toolchain but not this library.</p></div>
+    </div>
+    <div class="col">
+      <div class="field"><h4>Scope</h4><ul><li>A small vendored-dependency manifest recording name, version, upstream source, SHA-256 and license.</li><li>A check that fails when the file's hash differs from the manifest.</li><li>SBOM inclusion for the vendored file.</li><li>An update and advisory procedure in <code>dependency-policy.md</code>.</li></ul></div>
+      <div class="field"><h4>Acceptance criteria</h4><ul class="boxes"><li><span class="box" aria-hidden="true"></span><span>A committed manifest records d3 7.9.0's upstream source, the SHA-256 of <code>js/vendor/d3.min.js</code> and its license, and <code>THIRD_PARTY_NOTICES.md</code> agrees with it.</span></li><li><span class="box" aria-hidden="true"></span><span>A check that CI runs fails when <code>js/vendor/d3.min.js</code> changes without a matching manifest update. A test under <code>tests/ci</code> covers this.</span></li><li><span class="box" aria-hidden="true"></span><span><code>npm run build</code> produces an SBOM listing d3 7.9.0 as a runtime component with that hash, and <code>check:dist</code> or a CI test asserts it.</span></li><li><span class="box" aria-hidden="true"></span><span><code>docs/dependency-policy.md</code> states how updates to vendored libraries and security advisories for them are detected, and who reviews them.</span></li></ul></div>
+      <div class="field"><h4>Validation evidence</h4><p>the failing and passing runs of the hash check, and the SBOM excerpt.</p></div>
+    </div>
+  </div>
+  <dl class="meta">
+    <div><dt>Depends on</dt><dd>none.</dd></div>
+    <div><dt>Human dependencies</dt><dd>none.</dd></div>
+    <div><dt>Overlap check</dt><dd>REL-04, CI-05 and PRIV-03 cover toolchain, provenance and privacy. None of them covers the vendored runtime library.</dd></div>
+    <div><dt>Recommendation</dt><dd>Generate the manifest hash from the committed file, and have the provenance script read the manifest, so the SBOM and the check cannot disagree.</dd></div>
+  </dl>
+</article>
+  </section>
+
+  <section aria-labelledby="skip_h">
+    <h2 id="skip_h">Considered and not added</h2>
+    <p class="narrow">Findings that were checked and left out on purpose: already tracked, excluded by an owner decision, a deliberate design choice, or too small to be a task.</p>
+    <div class="table_wrap">
+      <table class="plain">
+        <thead><tr><th>Finding</th><th>Why it was not added</th></tr></thead>
+        <tbody>
+<tr><th scope="row">Accessibility and phone-layout gaps</th><td>Out of scope by the owner&#x27;s 2026-09-24 decision (CLEAN-05/06/07, READY-03). Existing alt text and icon-button labels stay; nothing new is proposed.</td></tr>
+<tr><th scope="row">Real-browser matrix evidence for Chrome, Edge, Firefox and Safari</th><td>READY-01 box 4 is still open and already requires it. A new task would duplicate it.</td></tr>
+<tr><th scope="row">QC threshold calibration and independent scientific validation</th><td>Already held under QC-CAL-01, QC-03/04/05/06, VALID-01 and VALID-03 on the HI-DATA, HI-REFERENCE and HI-EXPERT roots.</td></tr>
+<tr><th scope="row">Cross-sample, bead or metadata anchoring for the 1C/2C ambiguity</th><td>Excluded by owner decision D2: the user resolves it, and no anchoring is to be built.</td></tr>
+<tr><th scope="row">G2:G1 ratio-mode and CV-mode controls in the sidebar</th><td>The modeling plan (§1.2) lists them as advanced controls, but current Help promises nothing, DJF&#x27;s ratio/CV settings are inert under the peaks-first estimator (design §5.4), and exposing them is a product decision rather than a defect.</td></tr>
+<tr><th scope="row">Overdispersion-scaled standard errors</th><td>A deliberate, documented choice (uncertainty.js, lines 12–27): overdispersion is reported as a model-adequacy warning, not folded into the covariance. Changing it is a scientific policy call that belongs with GATE-03.</td></tr>
+<tr><th scope="row">End-to-end test of the CLOCCS series workflow</th><td>CLOCCS is labelled Unverified, and FEAT-04 holds its production path on an owner decision. Testing the UI before that decision would fix behaviour that may change.</td></tr>
+<tr><th scope="row">HTML injection from FCS keywords, filenames or imported metadata</th><td>Every innerHTML sink checked escapes through escape_html, the production CSP is strict, and unit_tests_table.py and unit_tests_session.py cover escaping.</td></tr>
+<tr><th scope="row">Data leaving the browser</th><td>Only same-origin requests exist (session autoload and reconnect). The CSP restricts connect-src to &#x27;self&#x27;, and the dist smoke test runs under the production headers.</td></tr>
+<tr><th scope="row">Retired baseFit / extendedFit / report state slots</th><td>Three dead null fields in pipeline_state.js (lines 124–126 and 308–309), already documented in model-result-contract.md. Too small to be a task on its own.</td></tr>
+<tr><th scope="row">Session schema migration</th><td>Implemented: version 0 sessions migrate to version 1 with the migrated fields recorded (session/core.js 558–567).</td></tr>
+<tr><th scope="row">Export formats</th><td>All eight formats exist and have download tests (tests_plotting.py, priority_batch_checks.py). The only gap, CI wiring, is part of CI-11.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="valid_h">
+    <h2 id="valid_h">Validation</h2>
+    <div class="table_wrap">
+      <table class="plain">
+        <thead><tr><th>Result</th><th>Check</th><th>Outcome</th></tr></thead>
+        <tbody>
+<tr><td><span class="state pass">Passed</span></td><th scope="row">Pure insertion</th><td>diff against the pre-edit snapshot: 348 lines inserted before Appendix A, 0 existing lines removed or changed.</td></tr>
+<tr><td><span class="state pass">Passed</span></td><th scope="row">Checklist parser (in memory)</th><td>build_checklist_status.parse_checklist: 107 tasks, 10 new, all open, IDs unique, each with a dated Review and a Recommendation; render_document succeeded.</td></tr>
+<tr><td><span class="state pass">Passed</span></td><th scope="row">Agent task tool (in memory)</th><td>checklist_task.parse_tasks reads all 10 with priority and box counts; the next claimable task would be CI-11.</td></tr>
+<tr><td><span class="state pass">Passed</span></td><th scope="row">Docs check with a fresh tracker</th><td>check_documents.py with the tracker output pointed at a temporary file: Document checks passed (21 HTML pages, 33 active Markdown files, tracker freshness and parser, Help UI labels).</td></tr>
+<tr><td><span class="state expected">Expected</span></td><th scope="row">build_checklist_status.py --check</th><td>Exit 1, &#x27;Tracker is stale&#x27;. The generated HTML was deliberately not regenerated.</td></tr>
+<tr><td><span class="state expected">Expected</span></td><th scope="row">npm run check:docs</th><td>Exit 1 with a single error: the stale tracker. Regenerating the tracker clears it.</td></tr>
+<tr><td><span class="state pass">Passed</span></td><th scope="row">Generated status file untouched</th><td>master_checklist_status.html SHA-256 4ed012f5… is the same before and after.</td></tr>
+<tr><td><span class="state pass">Passed</span></td><th scope="row">Baseline before editing</th><td>check:dom (243 IDs), check:imports (120 modules, 424 edges), lint:js and test:ci (67 tests) all passed.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="next">
+      <h3>To clear the stale-tracker failure</h3>
+      <p>The generated status pages were left untouched as instructed. Regenerating the tracker makes <code>check:docs</code> and the tracker freshness check pass:</p>
+      <pre>python3 scripts/build_checklist_status.py</pre>
+    </div>
+  </section>
+</div>
+</body>
+</html>
