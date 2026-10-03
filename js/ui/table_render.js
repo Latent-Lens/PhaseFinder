@@ -263,8 +263,18 @@ export function render_file_table() {
   ].join("");
   // NaN means "not computed for this file" — show a dash.
   const fmt = (v) => (v != null && !Number.isNaN(v) ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—");
+  const row_render_key = (row, is_linked) => JSON.stringify([
+    is_linked,
+    row.id === focused_file_id,
+    selected_file_ids.has(row.id),
+    ...TABLE_COLUMNS.map(({ field }) => row[field] ?? ""),
+    ...ordered_derived_columns.map((column) => row[column] ?? ""),
+    ...stats_groups.flatMap((group) => group.metrics.map((metric) => row[`${group.channel}:${metric}`] ?? "")),
+    ...cell_cycle_groups.flatMap((group) => group.columns.map(({ field }) => row[field] ?? "")),
+  ]);
 
   const checkbox_th_inner = `<input type="checkbox" id="select_all_files" data-focus-key="select-all" aria-label="Select all displayed FCS samples" title="${escape_html(Tooltips.text("selectAllDisplayedFiles"))}" />`;
+  const row_render_keys = new Map();
 
   let head_html;
   if (two_row_header) {
@@ -323,6 +333,8 @@ export function render_file_table() {
   const body = visible_files.length
     ? visible_files.map((row) => {
         const is_linked = metadata_row_is_linked(row);
+        const render_key = row_render_key(row, is_linked);
+        row_render_keys.set(row.id, render_key);
         const metadata_tds = TABLE_COLUMNS.map((column) => {
           if (column.field === "name") {
             const title = is_linked ? row.name : `${row.name || "(blank filename)"} — FCS file is not loaded`;
@@ -357,7 +369,7 @@ export function render_file_table() {
         ).join("") : "";
         const focus_class = row.id === focused_file_id ? " metadata_row_focused" : "";
         return `
-        <tr class="${is_linked ? "" : "metadata_row_unlinked"}${focus_class}" data-file-id="${escape_html(row.id)}">
+        <tr class="${is_linked ? "" : "metadata_row_unlinked"}${focus_class}" data-file-id="${escape_html(row.id)}" data-render-key="${escape_html(render_key)}">
           <td class="checkbox_col"><input type="checkbox" class="row_select" data-file-id="${escape_html(row.id)}" data-focus-key="row:${escape_html(row.id)}" aria-label="Select ${escape_html(display_name(row.name || 'unnamed sample'))}"${selected_file_ids.has(row.id) && is_linked ? " checked" : ""}${is_linked ? "" : " disabled"} /></td>
           ${metadata_tds}
           ${derived_tds}
@@ -367,15 +379,81 @@ export function render_file_table() {
       }).join("")
     : `<tr><td class="empty_note" colspan="${empty_colspan}">No files match the current filters.</td></tr>`;
 
-  const selected_count = visible_files.filter((row) => selected_file_ids.has(row.id)).length;
-  file_table.innerHTML = `
-    <span id="file_table_status" class="visually_hidden" role="status" aria-live="polite">Showing ${visible_files.length} of ${frame.length} samples; ${selected_count} selected.</span>
-    <table class="file_table" aria-describedby="file_table_status">
-      <caption>Loaded FCS samples and analysis results</caption>
-      <thead>${head_html}</thead>
+  const header_key = head_html
+    .replace(/ class="sort_arrow active"/g, ' class="sort_arrow"')
+    .replace(/ checked/g, "")
+    .replace(/ hidden/g, "")
+    .replace(/(<button[^>]*class="[^"]*th_filter_toggle[^>]*>)[^<]*(<\/button>)/g, "$1$2");
+  const table = file_table.querySelector("table.file_table");
+  if (!table) {
+    file_table.innerHTML = `
+      <table class="file_table">
+        <thead>${head_html}</thead>
       <tbody>${body}</tbody>
     </table>
-  `;
+    `;
+    file_table.querySelector("table.file_table").dataset.headerKey = header_key;
+  } else {
+    const thead = table.querySelector("thead");
+    if (table.dataset.headerKey !== header_key) {
+      thead.innerHTML = head_html;
+      table.dataset.headerKey = header_key;
+    } else {
+      thead.querySelectorAll("th").forEach((th) => {
+        const field = th.querySelector("[data-sort-field]")?.dataset.sortField;
+        th.querySelectorAll(".sort_arrow").forEach((arrow) => {
+          arrow.classList.toggle("active", field === sort_state.field && arrow.dataset.sortDir === sort_state.direction);
+        });
+      });
+      thead.querySelectorAll(".th_filter_toggle").forEach((toggle) => {
+        const field = toggle.dataset.filterField;
+        const selected = column_filters[field] || new Set();
+        toggle.textContent = [...selected].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).join(", ");
+        const menu = toggle.closest(".th_filter")?.querySelector(".multi_select_menu");
+        if (menu) {
+          menu.hidden = open_filter_field !== field;
+          menu.querySelectorAll(".th_filter_option").forEach((option) => {
+            option.checked = selected.has(option.value);
+          });
+        }
+      });
+    }
+    const tbody = table.querySelector("tbody");
+    if (!visible_files.length) {
+      tbody.innerHTML = body;
+    } else {
+      const existing = new Map([...tbody.querySelectorAll("tr[data-file-id]")]
+        .map((row) => [row.dataset.fileId, row]));
+      const reusable_rows = visible_files.map((row) => existing.get(row.id));
+      const can_reuse_rows = reusable_rows.every((row, index) =>
+        row && row.dataset.renderKey === row_render_keys.get(visible_files[index].id));
+      let keyed_rows;
+      if (can_reuse_rows) {
+        keyed_rows = reusable_rows;
+      } else {
+        const template = document.createElement("template");
+        template.innerHTML = body;
+        keyed_rows = [...template.content.children].map((next) => {
+          const current = existing.get(next.dataset.fileId);
+          if (!current) return next;
+          if (current.dataset.renderKey !== next.dataset.renderKey) {
+            current.className = next.className;
+            current.dataset.renderKey = next.dataset.renderKey;
+            current.replaceChildren(...next.childNodes);
+          }
+          return current;
+        });
+      }
+      for (const tr of keyed_rows) {
+        const file_id = tr.dataset.fileId;
+        const cb = tr.querySelector(".row_select");
+        if (cb && file_id) {
+          cb.checked = selected_file_ids.has(file_id);
+        }
+      }
+      tbody.replaceChildren(...keyed_rows);
+    }
+  }
   file_table.classList.add("has_file_table");
 
   update_select_all_checkbox();
@@ -428,7 +506,6 @@ export function update_select_all_checkbox() {
   );
   checkbox.checked = displayed.length > 0 && selected_count === displayed.length;
   checkbox.indeterminate = selected_count > 0 && selected_count < displayed.length;
-  checkbox.setAttribute("aria-checked", checkbox.indeterminate ? "mixed" : String(checkbox.checked));
 }
 
 export function handle_metadata_header_input(event) {
@@ -575,6 +652,10 @@ export function handle_table_change(event) {
     } else {
       selected_file_ids.delete(file_id);
       prune_focused_file_id();
+    }
+    const tr = target.closest("tr[data-render-key]");
+    if (tr) {
+      tr.dataset.renderKey = "";
     }
     update_select_all_checkbox();
     update_start_button_state();

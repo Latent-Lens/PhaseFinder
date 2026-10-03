@@ -61,7 +61,7 @@ function reset_panel_position() {
 function enter_mode() {
   remove_mode = true;
   selected.clear();
-  metadata_remove_column_button?.setAttribute("aria-pressed", "true");
+  metadata_remove_column_button?.setAttribute("data-active", "true");
   reset_panel_position(); // always spawn at the default bottom-right spot
   if (remove_columns_panel) remove_columns_panel.hidden = false;
   file_table?.classList.add("remove_columns_active");
@@ -78,7 +78,7 @@ function enter_mode() {
 function exit_mode() {
   remove_mode = false;
   selected.clear();
-  metadata_remove_column_button?.setAttribute("aria-pressed", "false");
+  metadata_remove_column_button?.setAttribute("data-active", "false");
   if (remove_columns_panel) remove_columns_panel.hidden = true;
   file_table?.classList.remove("remove_columns_active");
   if (resize_listener_attached) {
@@ -97,13 +97,6 @@ export function decorate_removable_headers() {
   if (!remove_mode || !file_table) return;
   file_table.querySelectorAll("th[data-column-key], td[data-column-key]").forEach((cell) => {
     cell.classList.add("col_removable");
-  });
-  file_table.querySelectorAll("th[data-column-key][data-column-label]").forEach((header) => {
-    const key = header.getAttribute("data-column-key");
-    header.tabIndex = 0;
-    header.setAttribute("role", "checkbox");
-    header.setAttribute("aria-label", `Remove ${header.getAttribute("data-column-label")} column`);
-    header.setAttribute("aria-checked", String(selected.has(key)));
   });
   overlay_layer = null; // render_file_table just replaced the table's innerHTML
   recompute_overlays();
@@ -134,19 +127,8 @@ export function handle_remove_columns_click(target) {
     selected.set(key, label_for_key(key));
   }
   update_panel();
-  file_table.querySelectorAll(`th[data-column-key="${CSS.escape(key)}"]`).forEach((header) => {
-    header.setAttribute("aria-checked", String(selected.has(key)));
-  });
   recompute_overlays();
   return true;
-}
-
-function on_table_keydown(event) {
-  if (!remove_mode || !["Enter", " "].includes(event.key)) return;
-  const header = event.target.closest('th[role="checkbox"][data-column-key]');
-  if (!header) return;
-  event.preventDefault();
-  handle_remove_columns_click(header);
 }
 
 function update_panel() {
@@ -329,7 +311,6 @@ export function init_remove_columns() {
   });
   remove_columns_cancel?.addEventListener("click", exit_mode);
   remove_columns_confirm?.addEventListener("click", remove_selected_columns);
-  file_table?.addEventListener("keydown", on_table_keydown);
   remove_columns_header?.addEventListener("mousedown", on_header_mousedown);
   document.addEventListener("mousemove", on_drag_move);
   document.addEventListener("mouseup", on_drag_end);

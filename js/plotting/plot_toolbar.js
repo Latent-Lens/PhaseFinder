@@ -49,7 +49,7 @@ Input:
 	(none)
 
 Output:
-	(none) [void]: updates aria-pressed and the active class
+	(none) [void]: updates data-active and the active class
 
 */
 function sync_toolbar_modes() {
@@ -57,7 +57,7 @@ function sync_toolbar_modes() {
   for (const [button, button_mode] of MODE_BUTTONS()) {
     if (!button) continue;
     const active = button_mode === mode;
-    button.setAttribute("aria-pressed", active ? "true" : "false");
+    button.setAttribute("data-active", active ? "true" : "false");
     button.classList.toggle("plot_tool__active", active);
   }
   if (plot_area) plot_area.dataset.plotMode = mode;

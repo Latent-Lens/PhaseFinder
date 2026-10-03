@@ -74,8 +74,7 @@ function clear_axis_range_error() {
     axis_range_error.textContent = "";
   }
   Object.values(AXIS_INPUTS()).forEach((input) => {
-    input?.removeAttribute("aria-invalid");
-    input?.removeAttribute("aria-describedby");
+    input?.removeAttribute("data-invalid");
   });
 }
 
@@ -182,8 +181,7 @@ export function apply_axis_range_modal() {
       axis_range_error.textContent = validation.message;
       axis_range_error.hidden = false;
     }
-    input?.setAttribute("aria-invalid", "true");
-    input?.setAttribute("aria-describedby", "axis_range_error");
+    input?.setAttribute("data-invalid", "true");
     input?.focus();
     return;
   }

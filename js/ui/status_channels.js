@@ -105,7 +105,7 @@ export function get_selected_channels() {
 
 export function update_channel_eligibility_status() {
   if (!channel_eligibility_status) return;
-  const selected = channel_select.value;
+  const selected = channel_select?.value;
   if (!selected) {
     channel_eligibility_status.hidden = true;
     channel_eligibility_status.textContent = "";
@@ -127,7 +127,9 @@ export function update_channel_eligibility_status() {
     ? `${compatible}/${results.length} files compatible · ${firstFailure.message}`
     : `Linear · no compensation declared · ${results.length}/${results.length} files compatible`;
   channel_eligibility_status.title = results.map((result) => result.message).join("\n");
-  collapsed_channel_select.title = channel_eligibility_status.textContent;
+  if (collapsed_channel_select) {
+    collapsed_channel_select.title = channel_eligibility_status.textContent;
+  }
 }
 
 // Companion selects, in panel order, paired with the auto-detected label to
@@ -179,7 +181,7 @@ Output:
 export function populate_companion_channel_controls() {
   if (!channel_aux_panel) return;
 
-  const dna_area = channel_select.value;
+  const dna_area = channel_select?.value;
   const columns = unique_columns();
   update_channel_eligibility_status();
   if (!dna_area || columns.length === 0) {
@@ -221,9 +223,11 @@ function append_help_link(element, help_href) {
 }
 
 export function set_status(message, is_error = false, help_href = null) {
-  status_el.textContent = message;
-  append_help_link(status_el, help_href);
-  status_el.classList.toggle("error", is_error);
+  if (status_el) {
+    status_el.textContent = message;
+    append_help_link(status_el, help_href);
+    status_el.classList.toggle("error", is_error);
+  }
 }
 
 /*
@@ -242,15 +246,17 @@ Output:
 export function set_status_bar(message, is_error = false, help_href = null, operation_id = null, error = null) {
   if (operation_id != null && operation_id !== progress_operation) return false;
   const level = is_error === true ? "error" : is_error === "warning" ? "warning" : "status";
-  status_bar_message.textContent = message;
-  append_help_link(status_bar_message, help_href);
-  status_bar.classList.toggle("error", level === "error");
-  status_bar.classList.toggle("warning", level === "warning");
+  if (status_bar_message) {
+    status_bar_message.textContent = message;
+    append_help_link(status_bar_message, help_href);
+  }
+  if (status_bar) {
+    status_bar.classList.toggle("error", level === "error");
+    status_bar.classList.toggle("warning", level === "warning");
+  }
   if (level !== "status") {
-    const alert = document.querySelector("#status_bar_alert");
     const details = document.querySelector("#status_diagnostics");
     const log = document.querySelector("#status_diagnostics_log");
-    if (alert && level === "error") alert.textContent = message;
     if (details && log) {
       details.hidden = false;
       const diagnostic = error instanceof AggregateError
@@ -315,6 +321,10 @@ export function update_drop_zone_text() {
   const count = get_file_map().size;
   update_loaded_files_list();
 
+  if (!drop_zone_title || !drop_zone_hint) {
+    return;
+  }
+
   if (!count) {
     drop_zone_title.textContent = "Drop FCS files here";
     drop_zone_hint.textContent = "or click to choose files from disk";
@@ -343,13 +353,14 @@ export function show_progress(label = "Loading FCS Metadata") {
   progress_operation += 1;
   window.clearTimeout(progress_hide_timer);
   hide_progress_cancel();
-  if (!progress_inert_snapshot) progress_return_focus = document.activeElement;
-  progress_inert_snapshot ??= new Map([...document.body.children].map((child) => [child, child.inert]));
-  [...document.body.children].forEach((child) => { child.inert = !child.contains(progress_overlay); });
-  progress_overlay.hidden = false;
-  progress_overlay.setAttribute("aria-busy", "true");
-  update_progress(0, label, "Preparing files...");
-  progress_overlay.querySelector(".progress_card")?.focus();
+  if (progress_overlay) {
+    if (!progress_inert_snapshot) progress_return_focus = document.activeElement;
+    progress_inert_snapshot ??= new Map([...document.body.children].map((child) => [child, child.inert]));
+    [...document.body.children].forEach((child) => { child.inert = !child.contains(progress_overlay); });
+    progress_overlay.hidden = false;
+    update_progress(0, label, "Preparing files...");
+    progress_overlay.querySelector(".progress_card")?.focus();
+  }
   return progress_operation;
 }
 
@@ -370,15 +381,16 @@ Output:
 
 */
 export function update_progress(percent, label = "Loading FCS Metadata", detail = "", filename = "", operation_id = progress_operation) {
-  if (operation_id !== progress_operation) return false;
+  if (operation_id !== progress_operation || !progress_overlay) return false;
   const bounded_percent = Math.max(0, Math.min(100, percent));
-  progress_fill.style.width = `${bounded_percent}%`;
-  progress_label.textContent = label;
-  progress_percent.textContent = `${Math.round(bounded_percent)}%`;
-  progress_overlay.querySelector("[role='progressbar']")?.setAttribute("aria-valuenow", String(Math.round(bounded_percent)));
-  progress_detail.innerHTML = filename
-    ? `${escape_html(detail)}<br><strong>${escape_html(filename)}</strong>`
-    : escape_html(detail);
+  if (progress_fill) progress_fill.style.width = `${bounded_percent}%`;
+  if (progress_label) progress_label.textContent = label;
+  if (progress_percent) progress_percent.textContent = `${Math.round(bounded_percent)}%`;
+  if (progress_detail) {
+    progress_detail.innerHTML = filename
+      ? `${escape_html(detail)}<br><strong>${escape_html(filename)}</strong>`
+      : escape_html(detail);
+  }
   return true;
 }
 
@@ -400,8 +412,9 @@ export function hide_progress(delay = 500, operation_id = progress_operation) {
   window.clearTimeout(progress_hide_timer);
   const finish = () => {
     if (operation_id !== progress_operation) return;
-    progress_overlay.hidden = true;
-    progress_overlay.setAttribute("aria-busy", "false");
+    if (progress_overlay) {
+      progress_overlay.hidden = true;
+    }
     progress_inert_snapshot?.forEach((value, element) => { element.inert = value; });
     progress_inert_snapshot = null;
     if (progress_return_focus?.isConnected && !progress_return_focus.disabled) progress_return_focus.focus();
@@ -627,13 +640,15 @@ Output:
 */
 export function populate_channel_controls() {
   const columns = unique_columns();
-  const previous = channel_select.value || collapsed_channel_select.value;
+  const previous = channel_select?.value || collapsed_channel_select?.value;
   const selected = columns.includes(previous)
     ? previous
     : suggest_column(columns, ["DAPI_A", "DNA_A", "AREA", "_A"]);
 
   [channel_select, collapsed_channel_select].forEach((select) => {
-    populate_single_select(select, columns, "Choose DNA-content area channel", selected);
+    if (select) {
+      populate_single_select(select, columns, "Choose DNA-content area channel", selected);
+    }
   });
   populate_companion_channel_controls();
 }
@@ -713,7 +728,7 @@ export function update_start_button_state() {
   const file_map = get_file_map();
   const has_selected_loaded_rows = Boolean(frame && frame.col("id")
     .some((id) => selected_file_ids.has(id) && file_map.has(id)));
-  const is_disabled = !channel_select.value || !has_selected_loaded_rows;
+  const is_disabled = !channel_select?.value || !has_selected_loaded_rows;
   [start_analysis_button, collapsed_plot_button].forEach((button) => {
     if (!button) {
       return;

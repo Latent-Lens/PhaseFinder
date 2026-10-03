@@ -39,6 +39,7 @@ import {
   DJF_TOTAL_COLOR,
   DJF_FILL_OPACITY,
   DJF_COMPONENT_LINE_WIDTH,
+  refresh_plot_theme_colors,
 } from "./data.js";
 import { set_focused_file_id } from "../data_structs/table_state.js";
 import { update_plot_title } from "./modeling.js";
@@ -58,7 +59,7 @@ import {
   strip_fcs_ext,
   plot_controls_offset,
 } from "./histogram_prep.js";
-import { make_plot_accessible, render_plot_accessibility_summary, render_plot_clipping_warning } from "./plot_accessibility.js";
+import { render_plot_accessibility_summary, render_plot_clipping_warning } from "./plot_accessibility.js";
 
 // Ridge rows get their own axes, but at ~118px tall they cannot carry the
 // overlay plot's tick density or type size -- these are sized so each small
@@ -320,6 +321,7 @@ function ridge_region_form(row, domain_min, domain_max) {
 // status and reason. Keeps the shared
 // plot maps in sync (debug API + table swatches) exactly like the overlay path.
 export function render_ridge_plot() {
+  refresh_plot_theme_colors();
   const rows = plottable_rows();
   prune_plot_compute_cache(rows);
   plot_area.innerHTML = "";
@@ -479,13 +481,6 @@ export function render_ridge_plot() {
     }
     // Draggable G1/G2 region boundaries so peaks can be edited in place.
     draw_ridge_region_editor(svg, entry.row, x_scale, margin.top, row_height - margin.bottom);
-    make_plot_accessible(svg, {
-      mode: "Ridge",
-      entries: [entry],
-      fits: fit ? [fit] : [],
-      x_domain,
-      y_domain: [0, y_max],
-    });
     row_el.appendChild(svg.node());
     container.appendChild(row_el);
   });

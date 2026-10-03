@@ -79,10 +79,8 @@ Output:
 export function set_sidebar_collapsed(is_collapsed) {
   app_shell.classList.toggle("sidebar_collapsed", is_collapsed);
   sidebar.classList.toggle("is_collapsed", is_collapsed);
-  sidebar_content.setAttribute("aria-hidden", String(is_collapsed));
   if ("inert" in sidebar_content) sidebar_content.inert = is_collapsed;
 
-  sidebar_toggle.setAttribute("aria-expanded", String(!is_collapsed));
   Tooltips.set_quick_tooltip(sidebar_toggle, is_collapsed ? "sidebarExpand" : "sidebarCollapse");
   sidebar_toggle.setAttribute("aria-label", is_collapsed ? "Expand sidebar" : "Collapse sidebar");
   sidebar_toggle_icon.src = is_collapsed ? SIDEBAR_OPEN_ICON : SIDEBAR_CLOSE_ICON;
@@ -180,11 +178,6 @@ export function sort_indicator(field) {
   return `<span class="sort_indicator"><span class="${asc_class}" data-sort-dir="asc" title="${sort_ascending_title}">▲</span><span class="${desc_class}" data-sort-dir="desc" title="${sort_descending_title}">▼</span></span>`;
 }
 
-function sort_aria(field) {
-  if (sort_state.field !== field) return "none";
-  return sort_state.direction === "desc" ? "descending" : "ascending";
-}
-
 /*
 
 Purpose:
@@ -219,8 +212,8 @@ export function filter_control(column) {
 
   return `
           <div class="th_filter multi_select">
-            <button type="button" class="th_filter_toggle multi_select_toggle" data-filter-field="${column.field}" data-focus-key="filter:${escape_html(column.field)}" aria-label="Filter ${escape_html(column.label)}" aria-controls="${menu_id}" aria-haspopup="true" aria-expanded="${is_open}" title="${escape_html(Tooltips.text("filterBy", column.label))}">${escape_html(summary.join(", "))}</button>
-            <div id="${menu_id}" class="multi_select_menu" data-filter-menu="${column.field}" role="group" aria-label="Filter ${escape_html(column.label)} values"${is_open ? "" : " hidden"}>${options}</div>
+            <button type="button" class="th_filter_toggle multi_select_toggle" data-filter-field="${column.field}" data-focus-key="filter:${escape_html(column.field)}" aria-label="Filter ${escape_html(column.label)}" title="${escape_html(Tooltips.text("filterBy", column.label))}">${escape_html(summary.join(", "))}</button>
+            <div id="${menu_id}" class="multi_select_menu" data-filter-menu="${column.field}"${is_open ? "" : " hidden"}>${options}</div>
           </div>`;
 }
 
@@ -263,7 +256,7 @@ export function header_cell(column) {
   const filter = column.filterable ? filter_control(column) : "";
 
   return `
-        <th aria-sort="${sort_aria(column.field)}"${column_key_attrs(column)}>
+        <th${column_key_attrs(column)}>
           <div class="th_inner">
             ${header_label_control(column)}
             ${filter}
@@ -292,7 +285,7 @@ export function column_key_attrs(column) {
 }
 
 export function header_label_cell(column) {
-  return `<th class="stats_label_th" aria-sort="${sort_aria(column.field)}"${column_key_attrs(column)}>${header_label_control(column)}</th>`;
+  return `<th class="stats_label_th"${column_key_attrs(column)}>${header_label_control(column)}</th>`;
 }
 
 /*
@@ -346,7 +339,9 @@ Output:
 export function update_views() {
   document.dispatchEvent(new CustomEvent("pf-render-file-table"));
   populate_channel_controls();
-  collapsed_channel_select.value = channel_select.value;
+  if (collapsed_channel_select && channel_select) {
+    collapsed_channel_select.value = channel_select.value;
+  }
   update_start_button_state();
 }
 

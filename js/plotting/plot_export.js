@@ -393,7 +393,7 @@ export function build_analysis_report_html() {
   const provenance = analysis_export_provenance();
   const provenance_json = JSON.stringify(provenance).replace(/</g, "\\u003c");
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8">
 <title>PhaseFinder analysis report</title><style>
 body{margin:32px;color:#172033;background:#fff;font:14px/1.45 Arial,sans-serif}h1,h2{color:#072c67}h1{margin-bottom:4px}.generated{color:#5b6472;margin-top:0}.plot{margin:18px 0 30px}.plot svg{max-width:100%;height:auto}.ridge_row{break-inside:avoid;margin:0 0 16px}.ridge_row_header{font-weight:700;margin-bottom:4px}.ridge_badge{margin-left:10px;color:#087f86}.provenance{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px}.provenance dt{font-weight:700}.provenance dd{margin:0}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top}th{background:#e7f3f5;color:#072c67}.empty{color:#5b6472}@media print{body{margin:12mm}.table-wrap{overflow:visible}tr,.plot svg{break-inside:avoid}}
 </style></head><body><h1>PhaseFinder analysis report</h1><p class="generated">Generated ${escape_html(generated)}</p>

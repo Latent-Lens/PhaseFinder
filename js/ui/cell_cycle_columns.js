@@ -65,8 +65,7 @@ Purpose:
 	UI-01: the single trust-precedence check every fraction-printing surface
 	agrees on, regardless of whether that surface can render a glyph
 	(format_fraction_cell() below: table/sidebar/TSV) or needs words for a
-	plain-text/screen-reader-only surface (js/plotting/render.js's SVG <desc>
-	and "Plot data and analysis summary" table). `validForReporting === false`
+	plain-text summary. `validForReporting === false`
 	outranks `converged === false`: a result with no reportable number at all
 	is a stronger caveat than a reportable-but-unconverged one. Never defaults
 	a missing/undefined validForReporting or converged to a trusting value --
@@ -94,7 +93,7 @@ Purpose:
 	didn't earn that trust. Verbatim from docs/audits/master_checklist.md's
 	UI-01 item -- do not redesign. The `⚠` glyph lives in the returned text
 	content itself (not a CSS ::before), so it survives copy/paste into the
-	table, TSV, and screen readers.
+	table and TSV.
 
 Input:
 	result [object]: the normalized fit result the fraction came from (passed

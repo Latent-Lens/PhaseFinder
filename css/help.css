@@ -4,7 +4,7 @@
    Color tokens below mirror the app's tokens in css/base.css. */
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   --bg: #f7f8fb;
   --panel: #ffffff;
   --text: #172033;
@@ -14,6 +14,7 @@
   /* UI-03: kept in sync with css/base.css's --border (see the comment there
      for the contrast math). */
   --border: #7386aa;
+  --border_strong: #5a6882;
   --accent: #2563eb;
   --accent_strong: #1d4ed8;
   --accent_soft: #e7efff;
@@ -24,7 +25,87 @@
   /* UI-03: kept in sync with css/base.css's --restart (see the comment there
      for the contrast math). */
   --restart: #d02222;
+  --caution: #8a5a00;
   --code_bg: #eef1f8;
+  --focus_ring: #072c67;
+
+  /* Callout tokens */
+  --callout_tip_bg: #f0fbf4;
+  --callout_tip_border: #b7e4c7;
+  --callout_tip_text: #047857;
+  --callout_warn_bg: #fff8ec;
+  --callout_warn_border: #f3d38a;
+  --callout_warn_text: #8a5a00;
+  --callout_limit_bg: #fdf3f2;
+  --callout_limit_border: #f1b8b3;
+  --callout_limit_text: #b91c1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141c;
+    --panel: #161d28;
+    --text: #e8ecf4;
+    --muted: #a3aec2;
+    --border: #6b788c;
+    --border_strong: #8a99b0;
+    --accent: #7aa8f5;
+    --accent_strong: #a9c6ff;
+    --accent_soft: #1d2a3f;
+    --logo_teal: #3fd0d9;
+    --teal_action: #5fdbe3;
+    --logo_blue: #9db9e8;
+    --success: #5ed6a4;
+    --restart: #ff8f8f;
+    --caution: #f0b64a;
+    --code_bg: #1c2532;
+    --focus_ring: #a9c6ff;
+
+    --callout_tip_bg: #12241c;
+    --callout_tip_border: #2f6b4d;
+    --callout_tip_text: #7ee3b8;
+    --callout_warn_bg: #2a2113;
+    --callout_warn_border: #7a5c1f;
+    --callout_warn_text: #f0b64a;
+    --callout_limit_bg: #2a1817;
+    --callout_limit_border: #7d3733;
+    --callout_limit_text: #ffb3b3;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f141c;
+  --panel: #161d28;
+  --text: #e8ecf4;
+  --muted: #a3aec2;
+  --border: #6b788c;
+  --border_strong: #8a99b0;
+  --accent: #7aa8f5;
+  --accent_strong: #a9c6ff;
+  --accent_soft: #1d2a3f;
+  --logo_teal: #3fd0d9;
+  --teal_action: #5fdbe3;
+  --logo_blue: #9db9e8;
+  --success: #5ed6a4;
+  --restart: #ff8f8f;
+  --caution: #f0b64a;
+  --code_bg: #1c2532;
+  --focus_ring: #a9c6ff;
+
+  --callout_tip_bg: #12241c;
+  --callout_tip_border: #2f6b4d;
+  --callout_tip_text: #7ee3b8;
+  --callout_warn_bg: #2a2113;
+  --callout_warn_border: #7a5c1f;
+  --callout_warn_text: #f0b64a;
+  --callout_limit_bg: #2a1817;
+  --callout_limit_border: #7d3733;
+  --callout_limit_text: #ffb3b3;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 * {
@@ -285,7 +366,7 @@ kbd {
   text-align: right;
 }
 
-.help_toc a[aria-current="page"] {
+.help_toc a.current {
   color: var(--logo_blue);
   font-weight: 800;
 }
@@ -547,30 +628,30 @@ section.help_section {
 }
 
 .callout.tip {
-  border-color: #b7e4c7;
-  background: #f0fbf4;
+  border-color: var(--callout_tip_border);
+  background: var(--callout_tip_bg);
 }
 
 .callout.tip .callout_title {
-  color: var(--success);
+  color: var(--callout_tip_text);
 }
 
 .callout.warn {
-  border-color: #f3d38a;
-  background: #fff8ec;
+  border-color: var(--callout_warn_border);
+  background: var(--callout_warn_bg);
 }
 
 .callout.warn .callout_title {
-  color: #92620a;
+  color: var(--callout_warn_text);
 }
 
 .callout.limit {
-  border-color: #f1b8b3;
-  background: #fdf3f2;
+  border-color: var(--callout_limit_border);
+  background: var(--callout_limit_bg);
 }
 
 .callout.limit .callout_title {
-  color: var(--restart);
+  color: var(--callout_limit_text);
 }
 
 table.help_table {
@@ -580,25 +661,9 @@ table.help_table {
   font-size: 0.92rem;
 }
 
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 3px solid #072c67;
-  outline-offset: 2px;
-}
 
-@media (forced-colors: active) {
-  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-    outline-color: Highlight;
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-  }
-}
+
 
 table.help_table th,
 table.help_table td {
@@ -618,48 +683,4 @@ table.help_table th {
   border-top: 1px solid var(--border);
   padding-top: 16px;
   margin-top: 40px;
-}
-
-@media (max-width: 900px) {
-  .help_layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .help_toc {
-    position: static;
-    margin-bottom: 24px;
-  }
-
-  .help_toc nav {
-    border-left: none;
-    padding-left: 0;
-  }
-
-  .help_toc ol ol {
-    display: none;
-  }
-
-  .overview_marker,
-  .overview_label {
-    display: none;
-  }
-
-  .overview_callout_list {
-    display: block;
-  }
-}
-
-@media (max-width: 640px) {
-  .help_header {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .help_header_title {
-    flex-basis: calc(100% - 120px);
-  }
-
-  .help_layout {
-    padding: 20px 14px 64px;
-  }
 }

@@ -1,4 +1,4 @@
-const MODAL_SELECTOR = "[role='dialog'][aria-modal='true']";
+const MODAL_SELECTOR = ".stats_modal";
 const FOCUSABLE_SELECTOR = "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])";
 
 let last_trigger = null;
@@ -10,9 +10,6 @@ function focusable(modal) {
 
 function open_modal(modal) {
   if (open_modals.some((entry) => entry.modal === modal)) return;
-  [...document.body.children].forEach((child) => {
-    child.inert = !child.contains(modal);
-  });
   open_modals.push({ modal, return_focus: last_trigger });
   if (!modal.contains(document.activeElement)) focusable(modal)[0]?.focus();
 }
@@ -21,13 +18,6 @@ function close_modal(modal) {
   const index = open_modals.findIndex((entry) => entry.modal === modal);
   if (index < 0) return;
   const [entry] = open_modals.splice(index, 1);
-  const active = open_modals[open_modals.length - 1];
-  if (active) {
-    [...document.body.children].forEach((child) => { child.inert = !child.contains(active.modal); });
-  } else {
-    const progress = document.querySelector("#progress_overlay:not([hidden])");
-    [...document.body.children].forEach((child) => { child.inert = progress ? !child.contains(progress) : false; });
-  }
   if (entry.return_focus?.isConnected && !entry.return_focus.disabled) entry.return_focus.focus();
 }
 
@@ -41,19 +31,7 @@ export function init_modal_focus() {
       if (event.key === "Enter" || event.key === " ") last_trigger = event.target;
       return;
     }
-    if (event.key === "Tab") {
-      const controls = focusable(modal);
-      if (!controls.length) return;
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    } else if (event.key === "Escape") {
+    if (event.key === "Escape") {
       queueMicrotask(() => {
         if (!modal.hidden) modal.querySelector(".stats_modal_close, [id$='_cancel']")?.click();
       });

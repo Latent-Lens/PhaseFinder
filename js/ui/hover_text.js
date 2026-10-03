@@ -14,6 +14,8 @@ const HoverText = Object.freeze({
   resetSession: "Deletes the current session. All loaded files will be unloaded, and any results, plots, and metadata will be removed, enabling a clean start.",
   sidebarCollapse: "Collapse the sidebar",
   sidebarExpand: "Expand the sidebar",
+  themeToLight: "Switch to Light Mode",
+  themeToDark: "Switch to Dark Mode",
   uploadFiles: "Drop FCS files here, or click to choose files from disk.",
   selectChannel: "Select a channel",
   plotChannelEventsRequirements: "Load FCS files and select a channel first. Curves are shown only for checked rows.",
@@ -174,7 +176,9 @@ export function init_tooltips() {
   }
 
   function hide() {
-    if (active?.getAttribute('aria-describedby') === tip.id) active.removeAttribute('aria-describedby');
+    if (active?.getAttribute('aria-describedby') === tip.id) {
+      active.removeAttribute('aria-describedby');
+    }
     clearTimeout(timer);
     timer  = null;
     active = null;
@@ -215,15 +219,6 @@ export function init_tooltips() {
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && active) hide();
-  });
-
-  document.addEventListener('pointerdown', (event) => {
-    if (event.pointerType !== 'touch') return;
-    const anchor = event.target.closest('.quick_tooltip');
-    if (!anchor || !anchor.dataset.tooltip) return hide();
-    hide();
-    active = anchor;
-    show(anchor);
   });
 
   // ── Hide on scroll / resize so the tooltip doesn't go stale ─────────────

@@ -67,6 +67,9 @@ export function set_sidebar_modeling_mode(on) {
     if (sidebar_title) {
       sidebar_title.textContent = on ? SIDEBAR_TITLE_MODELING : SIDEBAR_TITLE_FILES;
     }
+    if (sidebar_content) {
+      sidebar_content.scrollTop = 0;
+    }
     // Move focus onto a control that is visible in the new mode so it never
     // falls back to <body> when the previously focused button is hidden.
     const focus_target = on
@@ -77,8 +80,7 @@ export function set_sidebar_modeling_mode(on) {
     window.setTimeout(notify_layout_changed, SIDEBAR_MODE_FADE_MS);
   };
 
-  const reduce_motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduce_motion || !sidebar_content) {
+  if (!sidebar_content) {
     apply();
     return;
   }
@@ -100,7 +102,7 @@ export function set_sidebar_modeling_mode(on) {
 
 Purpose:
 	Collapses or expands the metadata (Loaded FCS Samples) panel, updating its
-	CSS class, body accessibility state, aria-expanded state, and toggle icon.
+	CSS class and toggle icon.
 
 Input:
 	is_collapsed [boolean]: true to collapse the panel, false to expand it
@@ -116,11 +118,9 @@ export function set_metadata_panel_collapsed(is_collapsed) {
 
   metadata_panel.classList.toggle("is_collapsed", is_collapsed);
   workspace?.classList.toggle("metadata_panel_collapsed", is_collapsed);
-  metadata_panel_body.setAttribute("aria-hidden", String(is_collapsed));
   if ("inert" in metadata_panel_body) metadata_panel_body.inert = is_collapsed;
 
   const table_tooltip_key = is_collapsed ? "tableExpand" : "tableCollapse";
-  metadata_panel_toggle.setAttribute("aria-expanded", String(!is_collapsed));
   Tooltips.set_quick_tooltip(metadata_panel_toggle, table_tooltip_key);
   metadata_panel_toggle.setAttribute("aria-label", Tooltips.text(table_tooltip_key));
   metadata_panel_toggle_icon.src = is_collapsed ? TABLE_RESTORE_ICON : TABLE_MINIMIZE_ICON;
@@ -166,7 +166,7 @@ export function toggle_metadata_panel() {
 
 Purpose:
 	Collapses or expands the plot panel, updating its CSS class, body
-	accessibility state, aria-expanded state, and toggle icon.
+	CSS class and toggle icon.
 
 Input:
 	is_collapsed [boolean]: true to collapse the panel, false to expand it
@@ -181,11 +181,9 @@ export function set_plot_panel_collapsed(is_collapsed) {
   }
 
   plot_panel.classList.toggle("is_collapsed", is_collapsed);
-  plot_panel_body.setAttribute("aria-hidden", String(is_collapsed));
   if ("inert" in plot_panel_body) plot_panel_body.inert = is_collapsed;
 
   const plot_tooltip_key = is_collapsed ? "plotExpand" : "plotCollapse";
-  plot_panel_toggle.setAttribute("aria-expanded", String(!is_collapsed));
   Tooltips.set_quick_tooltip(plot_panel_toggle, plot_tooltip_key);
   plot_panel_toggle.setAttribute("aria-label", Tooltips.text(plot_tooltip_key));
   plot_panel_toggle_icon.src = is_collapsed ? TABLE_RESTORE_ICON : TABLE_MINIMIZE_ICON;

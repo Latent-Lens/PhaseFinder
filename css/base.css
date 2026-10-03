@@ -3,7 +3,7 @@
 /* All app colors are defined here as custom properties; the rest of the CSS
    references them via var(). Change a color once, here. */
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 
   /* Surfaces & neutrals */
   --bg: #f7f8fb;
@@ -19,9 +19,9 @@
      non-text minimum for control boundaries). Darkened within the same blue-
      grey hue/saturation family until it clears 3:1 against every surface it
      actually sits on (--panel 3.67, --bg 3.46, --th_bg 3.36, --accent_soft
-     3.18 -- the tightest case). See
-     tests/ci/test_contrast_tokens.py::test_border_token_meets_nontext_contrast_on_every_surface. */
+     3.18 -- the tightest case). */
   --border: #7386aa;
+  --border_strong: #5a6882;
 
   /* Brand / accent (blue) */
   --accent: #2563eb;
@@ -42,6 +42,7 @@
      5.03, --th_bg 4.89, --accent_soft 4.62). */
   --restart: #d02222;
   --restart_strong: #b91c1c;
+  --caution: #8a5a00;
 
   /* Focus rings */
   --focus_success: rgba(5, 150, 105, 0.28);
@@ -53,8 +54,7 @@
      fails WCAG 1.4.11's 3:1 non-text minimum for a control boundary that is
      the primary first-run call to action). Darkened within the same hue/
      saturation until it clears 3:1 on every surface it could sit on (--panel
-     3.70, --bg 3.49, --th_bg 3.39, --accent_soft 3.21). See
-     tests/ci/test_contrast_tokens.py::test_border_token_meets_nontext_contrast_on_every_surface. */
+     3.70, --bg 3.49, --th_bg 3.39, --accent_soft 3.21). */
   --dropzone_border: #6f86ab;
   --th_bg: #f2f5fa;
   --progress_track_bg: #e5edf6;
@@ -76,6 +76,130 @@
   --djf_total: #111827;
   --djf_debris: #a78bfa;
   --djf_agg: #f59e0b;
+
+  /* Residual panel (UI-13) — read by plotting/residual_panel.js via getComputedStyle.
+     Aliases onto already-contrast-vetted tokens above (UI-03) rather than new
+     colors, so this panel inherits their verified ratios instead of needing its
+     own audit: --border is the checked 3:1 non-text boundary, --accent/--danger
+     are the checked 4.5:1 text/mark colors, --text is the base body color. */
+  --residual_band_fill: var(--th_bg);
+  --residual_band_edge: var(--border);
+  --residual_mark: var(--accent);
+  --residual_mark_out: var(--danger);
+  --residual_zero: var(--text);
+}
+
+/* UI-12: Dark theme token overrides.
+   The proposed #38424f border from earlier audit drafts was recomputed: it only achieved
+   1.64:1 on #161d28 (failing 3:1). #6b788c achieves >=3.22:1 across all dark surfaces
+   (--panel #161d28, --bg #0f141c, --th_bg #1c2532, --accent_soft #1d2a3f), and
+   --border_strong at #8a99b0 achieves >=4.99:1. All text tokens clear >=6.45:1.
+   All plot component colors clear >=7.91:1 against dark panel/bg. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141c;
+    --panel: #161d28;
+    --text: #e8ecf4;
+    --muted: #a3aec2;
+    --border: #6b788c;
+    --border_strong: #8a99b0;
+
+    --accent: #7aa8f5;
+    --accent_strong: #a9c6ff;
+    --accent_soft: #1d2a3f;
+    --logo_teal: #3fd0d9;
+    --teal_action: #5fdbe3;
+    --logo_blue: #9db9e8;
+
+    --danger: #ff9b91;
+    --success: #5ed6a4;
+    --success_strong: #7ee3b8;
+    --restart: #ff8f8f;
+    --restart_strong: #ffb3b3;
+    --caution: #f0b64a;
+
+    --focus_success: rgba(94, 214, 164, 0.32);
+    --focus_restart: rgba(255, 143, 143, 0.32);
+    --focus_ring: #a9c6ff;
+
+    --dropzone_border: #6b788c;
+    --th_bg: #1c2532;
+    --progress_track_bg: #1c2532;
+    --progress_track_border: #6b788c;
+    --progress_card_border: rgba(63, 208, 217, 0.5);
+
+    --shadow_soft: rgba(0, 0, 0, 0.5);
+    --shadow_medium: rgba(0, 0, 0, 0.6);
+    --shadow_strong: rgba(0, 0, 0, 0.72);
+
+    --djf_g1: #8fc4e8;
+    --djf_s: #a9dd93;
+    --djf_g2: #f09a9c;
+    --djf_total: #e8ecf4;
+    --djf_debris: #c4a9fb;
+    --djf_agg: #f5b455;
+
+    --residual_band_fill: var(--th_bg);
+    --residual_band_edge: var(--border);
+    --residual_mark: var(--accent);
+    --residual_mark_out: var(--danger);
+    --residual_zero: var(--text);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f141c;
+  --panel: #161d28;
+  --text: #e8ecf4;
+  --muted: #a3aec2;
+  --border: #6b788c;
+  --border_strong: #8a99b0;
+
+  --accent: #7aa8f5;
+  --accent_strong: #a9c6ff;
+  --accent_soft: #1d2a3f;
+  --logo_teal: #3fd0d9;
+  --teal_action: #5fdbe3;
+  --logo_blue: #9db9e8;
+
+  --danger: #ff9b91;
+  --success: #5ed6a4;
+  --success_strong: #7ee3b8;
+  --restart: #ff8f8f;
+  --restart_strong: #ffb3b3;
+  --caution: #f0b64a;
+
+  --focus_success: rgba(94, 214, 164, 0.32);
+  --focus_restart: rgba(255, 143, 143, 0.32);
+  --focus_ring: #a9c6ff;
+
+  --dropzone_border: #6b788c;
+  --th_bg: #1c2532;
+  --progress_track_bg: #1c2532;
+  --progress_track_border: #6b788c;
+  --progress_card_border: rgba(63, 208, 217, 0.5);
+
+  --shadow_soft: rgba(0, 0, 0, 0.5);
+  --shadow_medium: rgba(0, 0, 0, 0.6);
+  --shadow_strong: rgba(0, 0, 0, 0.72);
+
+  --djf_g1: #8fc4e8;
+  --djf_s: #a9dd93;
+  --djf_g2: #f09a9c;
+  --djf_total: #e8ecf4;
+  --djf_debris: #c4a9fb;
+  --djf_agg: #f5b455;
+
+  --residual_band_fill: var(--th_bg);
+  --residual_band_edge: var(--border);
+  --residual_mark: var(--accent);
+  --residual_mark_out: var(--danger);
+  --residual_zero: var(--text);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 * {
@@ -154,29 +278,9 @@ label {
   font-weight: 650;
 }
 
-:where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 3px solid var(--focus_ring) !important;
-  outline-offset: 2px;
-}
 
-@media (forced-colors: active) {
-  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
-    outline-color: Highlight !important;
-  }
 
-  :where(button, input, select, textarea, [role="button"], [role="checkbox"], [role="slider"], [role="separator"]) {
-    border: 1px solid ButtonText;
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-  }
-}
 
 input.visually_hidden_file {
   position: absolute;

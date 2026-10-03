@@ -32,8 +32,6 @@ export function init_panel_resize() {
     const set_sidebar_width = (width) => {
       const value = Math.min(Math.max(width, MIN_SIDEBAR_WIDTH), sidebar_max());
       app_shell.style.setProperty('--sidebar_width', `${value}px`);
-      sidebar_resizer.setAttribute('aria-valuenow', String(Math.round(value)));
-      sidebar_resizer.setAttribute('aria-valuemax', String(sidebar_max()));
     };
 
     sidebar_resizer.addEventListener('pointerdown', (e) => {
@@ -70,23 +68,6 @@ export function init_panel_resize() {
     };
     sidebar_resizer.addEventListener('pointerup', end_sidebar_drag);
     sidebar_resizer.addEventListener('pointercancel', end_sidebar_drag);
-    sidebar_resizer.addEventListener('keydown', (event) => {
-      if (app_shell.classList.contains('sidebar_collapsed')) return;
-      const step = event.shiftKey ? 50 : 10;
-      const value = {
-        ArrowLeft: sidebar_width() - step,
-        ArrowRight: sidebar_width() + step,
-        PageDown: sidebar_width() - 50,
-        PageUp: sidebar_width() + 50,
-        Home: MIN_SIDEBAR_WIDTH,
-        End: sidebar_max(),
-        Enter: 320,
-      }[event.key];
-      if (value == null) return;
-      event.preventDefault();
-      set_sidebar_width(value);
-      window.dispatchEvent(new Event('resize'));
-    });
     window.addEventListener('resize', () => set_sidebar_width(sidebar_width()));
     set_sidebar_width(sidebar_width());
   }
@@ -111,8 +92,6 @@ export function init_panel_resize() {
       plot_panel.style.minHeight = '0';
       metadata_panel.style.flex = `0 0 ${total - value}px`;
       metadata_panel.style.minHeight = '0';
-      workspace_resizer.setAttribute('aria-valuenow', String(Math.round(value)));
-      workspace_resizer.setAttribute('aria-valuemax', String(Math.round(maximum)));
     };
 
     function sync_resizer_state() {
@@ -140,11 +119,6 @@ export function init_panel_resize() {
 
       workspace_resizer.classList.toggle('visible',   is_visible);
       workspace_resizer.classList.toggle('draggable', is_draggable);
-      workspace_resizer.setAttribute('aria-disabled', String(!is_draggable));
-      if (is_draggable) {
-        workspace_resizer.setAttribute('aria-valuenow', String(Math.round(plot_panel.getBoundingClientRect().height)));
-        workspace_resizer.setAttribute('aria-valuemax', String(Math.round(Math.max(MIN_PANEL_HEIGHT, panel_total() - MIN_PANEL_HEIGHT))));
-      }
     }
 
     // React to attribute/class changes on both panels.
@@ -186,23 +160,5 @@ export function init_panel_resize() {
     };
     workspace_resizer.addEventListener('pointerup', end_panel_drag);
     workspace_resizer.addEventListener('pointercancel', end_panel_drag);
-    workspace_resizer.addEventListener('keydown', (event) => {
-      if (!workspace_resizer.classList.contains('draggable')) return;
-      const current = plot_panel.getBoundingClientRect().height;
-      const total = panel_total();
-      const value = {
-        ArrowUp: current - 10,
-        ArrowDown: current + 10,
-        PageUp: current - 50,
-        PageDown: current + 50,
-        Home: MIN_PANEL_HEIGHT,
-        End: total - MIN_PANEL_HEIGHT,
-        Enter: total / 2,
-      }[event.key];
-      if (value == null) return;
-      event.preventDefault();
-      set_panel_heights(value, total);
-      window.dispatchEvent(new Event('resize'));
-    });
   }
 }
