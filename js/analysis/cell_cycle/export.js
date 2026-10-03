@@ -38,6 +38,37 @@ function export_curves(result) {
   return curves;
 }
 
+/**
+ * @typedef {Object} FitExportPayload
+ * @property {string} formatVersion - Semantic format version of the export payload
+ * @property {string} exportedAt - ISO 8601 timestamp of export generation
+ * @property {{ name: string, version: string, sourceCommit: string }} application - Software build provenance
+ * @property {{ name: string|null, eventCount: number|null, channel: string|null }} sample - Sample identification
+ * @property {{ id: string|null, version: string|null, settings: Object|null, settingsApplicability: Object|null, configHash: string|null }} model - Model configuration
+ * @property {{ range: Array<number>|null, binCount: number|null, underflow: number|null, overflow: number|null, componentTailCoverage: number|null }} domain - Analysis domain
+ * @property {Object|null} histogramProvenance - Input histogram details
+ * @property {import("./result_contract.js").PeakRegions|null} peakRegions - Accepted peak limits
+ * @property {Object|null} qc - Pre-modeling QC results
+ * @property {Object|null} bulkRegionProvenance - Bulk region assignment metadata
+ * @property {{
+ *   parameters: Object|null,
+ *   phaseFractions: import("./result_contract.js").PhaseFractions|null,
+ *   converged: boolean|null,
+ *   convergenceReason: string|null,
+ *   validForReporting: boolean|null,
+ *   scientificallyValid: boolean|null,
+ *   limitedReliability: boolean|null,
+ *   validityReasons: Array<import("./result_contract.js").ResultReasonIssue>,
+ *   warnings: Array<import("./result_contract.js").QualityWarning>,
+ *   goodnessOfFit: number|null,
+ *   optimizerDiagnostics: Object|null,
+ *   contractVersion: number|null,
+ *   uncertainty: Object|null,
+ *   resampling: Object|null
+ * }} fit - Statistical fit outcomes and trust caveats
+ * @property {Object|null} curves - Per-bin curves if includeCurves is enabled
+ */
+
 /*
 
 Purpose:
@@ -47,17 +78,12 @@ Purpose:
 	goodness-of-fit, warnings, validForReporting) alongside the phase
 	fractions themselves.
 
-Input:
-	row [object]: the file-table row being exported (row.name, row.data)
-	result [object]: a contracted model result (see result_contract.js);
-	                  throws if absent
-	options [object]: { includeCurves = true }: whether to embed the fitted
-	                   curve arrays (can be large; omit for a compact export)
-
-Output:
-	export [object]: the versioned, JSON-serializable export payload
-
-*/
+/**
+ * @param {Object} row - The file-table row being exported
+ * @param {import("./result_contract.js").ContractedModelResult|import("./result_contract.js").ActiveModelResult} result - A contracted model result
+ * @param {{ includeCurves?: boolean }} [options] - Whether to embed fitted curves
+ * @returns {FitExportPayload}
+ */
 export function build_fit_export(row, result, { includeCurves = true } = {}) {
   if (!result) throw new Error("No fit result to export.");
   return {
@@ -88,6 +114,8 @@ export function build_fit_export(row, result, { includeCurves = true } = {}) {
     },
     histogramProvenance: result.histogramProvenance ?? null,
     peakRegions: result.peakRegions ?? null,
+    peakDetectionStatus: result.peakDetectionStatus ?? null,
+    userAssignedPeakIdentity: result.userAssignedPeakIdentity ?? null,
     qc: result.preflight?.qc ?? null,
     bulkRegionProvenance: result.bulkRegionProvenance ?? null,
     fit: {
@@ -101,8 +129,11 @@ export function build_fit_export(row, result, { includeCurves = true } = {}) {
       validityReasons: result.validityReasons ?? [],
       warnings: result.warnings ?? [],
       goodnessOfFit: result.goodnessOfFit ?? null,
-      optimizerDiagnostics: result.diagnostics ?? result.optimizerDiagnostics ?? null,
+      optimizerDiagnostics: result.optimizerDiagnostics ?? null,
       contractVersion: result.contractVersion ?? null,
+      uncertainty: result.uncertainty ?? null,
+      resampling: result.resampling ?? null,
+      policy: result.policyProvenance ?? result.provenance?.policy ?? null,
     },
     curves: includeCurves ? export_curves(result) : null,
   };
@@ -131,16 +162,11 @@ Purpose:
 	set is fixed regardless of bin count, so files from different samples or
 	bin settings stay comparable.
 
-Input:
-	row [object]: the file-table row being exported (row.name)
-	result [object]: a contracted model result whose result.curves carries
-	                  parallel x/observed/fitted/g1/s/g2/residuals arrays;
-	                  throws if curves are absent
-
-Output:
-	csv [string]: CSV text with a header row, "\n"-joined
-
-*/
+/**
+ * @param {Object} row - The file-table row being exported
+ * @param {import("./result_contract.js").ContractedModelResult|import("./result_contract.js").ActiveModelResult} result - A contracted model result
+ * @returns {string} - CSV text with header row
+ */
 export function build_fit_csv(row, result) {
   const c = export_curves(result);
   if (!c?.x?.length) throw new Error("This fit has no curves to export.");

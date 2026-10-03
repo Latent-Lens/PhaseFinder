@@ -48,7 +48,7 @@ Output:
 function checked_qc_filters() {
   const filters = [];
   QC_FILTER_IDS.forEach((id, index) => {
-    if (document.getElementById(id)?.getAttribute("aria-pressed") === "true") filters.push(index);
+    if (document.getElementById(id)?.getAttribute("data-active") === "true") filters.push(index);
   });
   return filters;
 }
@@ -114,6 +114,7 @@ export function get_modeling_session_state() {
       // the two apart on restore.
       model_version: get_model(settings.modelId)?.version ?? "",
       peak_detection_status: modeling.peakDetection?.status ?? "",
+      user_assigned_peak_identity: modeling.peakSelection?.userAssignedIdentity ?? "",
       reviewed: Boolean(modeling.peakSelection.reviewed),
       g1_left: regions.g1.left,
       g1_right: regions.g1.right,
@@ -141,6 +142,16 @@ export function get_modeling_session_state() {
       // them, so a restore into a changed QC config or a different file simply
       // fails to match and blocks again -- see qc_acknowledgement_key().
       qc_acknowledgements: JSON.stringify(pipelineState?.qcAcknowledgements ?? {}),
+      policy_config_version: modeling.resultsByKey?.[modeling.activeResultKey]?.policyProvenance?.policyVersion || "",
+      resampling_method: modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.method || "",
+      resampling_interval_method: modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.intervalMethod || "",
+      resampling_interval_level: modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.intervalLevel ?? null,
+      resampling_seed: modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.seed ?? null,
+      resampling_replicates_requested: modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.replicatesRequested ?? null,
+      resampling_replicates_succeeded: modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.replicatesSucceeded ?? null,
+      resampling_replicates_failed: modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.replicatesFailed ?? null,
+      resampling_failures: JSON.stringify(modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.failures ?? []),
+      resampling_definition: modeling.resultsByKey?.[modeling.activeResultKey]?.resampling?.definition || "",
     });
   }
   return { qc_filters: checked_qc_filters(), scatter_gates, singlet_gates, samples };
@@ -216,6 +227,10 @@ export async function apply_modeling_session(config, { onProgress, savedSourceCo
       if (saved.g2_source) regions.g2.source = saved.g2_source;
       const modeling = get_modeling_state(row);
       modeling.peakSelection.reviewed = saved.reviewed === true;
+      modeling.peakSelection.userAssignedIdentity = saved.user_assigned_peak_identity || null;
+      if (saved.user_assigned_peak_identity) {
+        modeling.peakSelection.source = "user_assigned";
+      }
       // Restore the assumption before preflight/refitting; never inherit a
       // detection from the workspace being replaced by this session.
       modeling.peakDetection = saved.peak_detection_status
@@ -305,6 +320,28 @@ export async function apply_modeling_session(config, { onProgress, savedSourceCo
             versionDrifted, implementationDrifted,
             savedSourceCommit: savedSourceCommit || null, currentSourceCommit,
           });
+        }
+        if (saved.resampling_method) {
+          const failures = (() => {
+            try { return JSON.parse(saved.resampling_failures || "[]"); } catch (_) { return []; }
+          })();
+          const provenance = {
+            method: saved.resampling_method,
+            intervalMethod: saved.resampling_interval_method,
+            intervalLevel: saved.resampling_interval_level,
+            seed: saved.resampling_seed,
+            replicatesRequested: saved.resampling_replicates_requested,
+            replicatesSucceeded: saved.resampling_replicates_succeeded,
+            replicatesFailed: saved.resampling_replicates_failed,
+            failures,
+            definition: saved.resampling_definition,
+          };
+          if (!result.provenance) result.provenance = {};
+          result.provenance.resampling = provenance;
+          result.resamplingProvenance = provenance;
+        }
+        if (saved.policy_config_version) {
+          result.policyConfigVersion = saved.policy_config_version;
         }
       }
       restored += 1;

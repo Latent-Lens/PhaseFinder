@@ -133,6 +133,26 @@ _TESTS = r"""() => {
     };
   });
 
+  run('build_fit_export: carries uncertainty and resampling provenance when present', () => {
+    const resWithUncertainty = {
+      ...fullResult,
+      uncertainty: { conditionNumber: 1234, rank: 9 },
+      resampling: {
+        method: 'event_bootstrap',
+        replicatesRequested: 100,
+        replicatesSucceeded: 100,
+        definition: '100 replicates',
+      },
+    };
+    const out = mod.build_fit_export(row, resWithUncertainty);
+    return {
+      pass: out.fit.uncertainty?.conditionNumber === 1234
+        && out.fit.resampling?.method === 'event_bootstrap'
+        && out.fit.resampling?.replicatesRequested === 100,
+      detail: JSON.stringify({ uncertainty: out.fit.uncertainty, resampling: out.fit.resampling }),
+    };
+  });
+
   run('build_fit_export: includeCurves defaults to true, and false omits the curves', () => {
     const withCurves = mod.build_fit_export(row, fullResult);
     const withoutCurves = mod.build_fit_export(row, fullResult, { includeCurves: false });

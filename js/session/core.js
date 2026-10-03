@@ -212,8 +212,10 @@ function collect_session() {
   const sidebar_w  = parseFloat(getComputedStyle(app_shell).getPropertyValue('--sidebar_width')) || 320;
   const plot_panel = document.getElementById('plot_panel');
   const meta_panel = document.getElementById('metadata_panel');
-  const plot_h     = plot_panel ? Math.round(plot_panel.getBoundingClientRect().height) : 400;
-  const meta_h     = meta_panel ? Math.round(meta_panel.getBoundingClientRect().height) : 300;
+  const raw_plot_h = plot_panel ? Math.round(plot_panel.getBoundingClientRect().height) : 0;
+  const raw_meta_h = meta_panel ? Math.round(meta_panel.getBoundingClientRect().height) : 0;
+  const plot_h     = raw_plot_h >= 50 ? raw_plot_h : 400;
+  const meta_h     = raw_meta_h >= 50 ? raw_meta_h : 300;
 
   const ch_sel     = document.getElementById('channel_select');
   const color_by   = document.getElementById('plot_color_by');

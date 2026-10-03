@@ -176,6 +176,7 @@ def execute_unit_tests(ctx: TestContext):
     from unit_tests_sci05_cross_surface import run_sci05_cross_surface_tests
     run_sci05_cross_surface_tests(ctx)
 
+
     return require_unit_result_count(len(ctx.results) - before)
 
 

@@ -263,6 +263,18 @@ _FULL_SUITE = """() => {
        && !/QC applied/.test(failedQcStatus.message),
        failedQcStatus.message);
 
+  const withheldCellGateStatus = qc_completion_message(
+    [{ name: 'sample.fcs', data: { masks: { scatter: null } } }],
+    { get_state: () => ({ scatterGate: { reviewRequired: true, limitedReliability: true,
+      status: 'scatter gate review required', retainedEventCount: 80 } }) },
+    [2],
+  );
+  push('QC-07: QC summary says a review-required Cell Gate retained all entering events',
+       withheldCellGateStatus.incomplete.length === 1
+       && /mask withheld/.test(withheldCellGateStatus.message)
+       && /100% of events entering Cell Gate were retained/.test(withheldCellGateStatus.message),
+       withheldCellGateStatus.message);
+
   const qcUiTypes = [
     qc_ui_outcome({ rejectedEventCount: 0, retainedEventCount: 10 }).type,
     qc_ui_outcome({ skipped: true, reason: 'missing channel' }).type,

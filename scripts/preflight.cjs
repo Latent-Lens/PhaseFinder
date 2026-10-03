@@ -26,3 +26,4 @@ if (pkg.license !== "PolyForm-Noncommercial-1.0.0"
 }
 
 console.log(`Toolchain preflight passed: PhaseFinder ${pkg.version}, Node ${process.version}.`);
+require("./check-model-version.cjs");

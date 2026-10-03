@@ -11,7 +11,13 @@ state.
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "e2e"))
+
+_HERE = Path(__file__).resolve().parent
+_TESTS_ROOT = _HERE.parents[1]
+_E2E = _TESTS_ROOT / "e2e" / "driving_code"
+for _p in (_HERE, _E2E, _HERE.parent / "e2e"):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from helpers import TestContext
 
@@ -51,6 +57,16 @@ _FULL_SUITE = r"""() => {
         ratio_mode: 'bounded', ratio_min: 1.65, ratio_max: 2.25,
         locked_ratio: 2, cv_mode: 'free', ploidy_count: 1,
         contaminant_debris: 'off', contaminant_aggregate: 'off', contaminant_subg1: 'off',
+        resampling_method: 'event_bootstrap',
+        resampling_interval_method: 'bias_corrected',
+        resampling_interval_level: 0.95,
+        resampling_seed: 42,
+        resampling_replicates_requested: 200,
+        resampling_replicates_succeeded: 198,
+        resampling_replicates_failed: 2,
+        resampling_failures: '["fit_diverged"]',
+        resampling_definition: '95% bootstrap interval from 198 replicates',
+        user_assigned_peak_identity: 'g1',
       }],
     },
     metadata: {
@@ -168,6 +184,19 @@ _FULL_SUITE = r"""() => {
        && parsed.modeling.samples[0].ratio_min === 1.65
        && parsed.modeling.samples[0].ploidy_count === 1,
        JSON.stringify(parsed.modeling.samples[0]));
+  push('round-trip: modeling resampling provenance survives',
+       parsed.modeling.samples[0].resampling_method === 'event_bootstrap'
+       && parsed.modeling.samples[0].resampling_interval_method === 'bias_corrected'
+       && parsed.modeling.samples[0].resampling_interval_level === 0.95
+       && parsed.modeling.samples[0].resampling_seed === 42
+       && parsed.modeling.samples[0].resampling_replicates_requested === 200
+       && parsed.modeling.samples[0].resampling_replicates_succeeded === 198
+       && parsed.modeling.samples[0].resampling_replicates_failed === 2
+       && parsed.modeling.samples[0].resampling_definition === '95% bootstrap interval from 198 replicates',
+       JSON.stringify(parsed.modeling.samples[0]));
+  push('round-trip: AMBIG-01 user_assigned_peak_identity survives',
+       parsed.modeling.samples[0].user_assigned_peak_identity === 'g1',
+       JSON.stringify(parsed.modeling.samples[0].user_assigned_peak_identity));
 
   push('round-trip: table sort field and direction survive',
        parsed.table.sort_field === 'strain' && parsed.table.sort_direction === 'desc',
@@ -268,6 +297,7 @@ def run_session_tests(ctx: TestContext):
       const schema = await import('/js/session/session_schema.js');
       const transaction = await import('/js/session/session_transaction.js');
       const sessionCore = await import('/js/session/core.js');
+      const reconnect = await import('/js/session/reconnect.js');
       const results = [];
       const push = (name, pass, detail = '') => results.push({ name, pass: Boolean(pass), detail });
       const indexKey = 'phasefinder_cache_index_v1';
@@ -384,11 +414,21 @@ def run_session_tests(ctx: TestContext):
           });
         } catch (_) { pathRejected = true; }
         let layoutRejected = false;
-        try { schema.validate_session_draft({ ...validLegacy, ui: { sidebar_width_px: -1 } }); }
+        try { schema.validate_session_draft({ ...validLegacy, ui: { sidebar_width_px: 'wide' } }); }
         catch (_) { layoutRejected = true; }
-        push('SEC-01/UI-18: schema rejects unknown sections, type/path errors, and invalid persisted layout before apply',
+        // An out-of-range layout number (an older build saved a 0 px plot panel)
+        // is dropped so the default layout applies, not a failed session load.
+        const staleLayout = { plot_panel_height_px: 0, metadata_panel_height_px: 453, sidebar_width_px: -1 };
+        let staleLayoutLoads = true;
+        try { schema.validate_session_draft({ ...validLegacy, ui: staleLayout }); }
+        catch (_) { staleLayoutLoads = false; }
+        const staleLayoutDropped = !('plot_panel_height_px' in staleLayout) && !('sidebar_width_px' in staleLayout)
+          && staleLayout.metadata_panel_height_px === 453;
+        push('SEC-01/UI-18: schema rejects unknown sections, type/path errors, and non-numeric persisted layout before apply',
           unknownRejected && typeRejected && pathRejected && layoutRejected,
           JSON.stringify({ unknownRejected, typeRejected, pathRejected, layoutRejected }));
+        push('UI-18: out-of-range persisted layout numbers are dropped instead of failing the session load',
+          staleLayoutLoads && staleLayoutDropped, JSON.stringify({ staleLayoutLoads, staleLayout }));
 
         const migrated = sessionCore.prepare_session_draft({
           session: { created: '2026-01-01T00:00:00Z', schema_version: 0 },
@@ -623,6 +663,38 @@ def run_session_tests(ctx: TestContext):
             JSON.stringify({ droppedCount, drainRecords, neverStartedClean, firstRecordSafe }));
           for (const record of drainRecords) await opfs.delete_opfs_path(record.opfs_path);
 
+          // READY-03: the happy path -- Reset must actually remove every real
+          // OPFS file it owns, not just report success. Two genuine files,
+          // written and catalogued exactly as a real session would, then a
+          // real (unmocked) release_active_session_cache() call.
+          const happyNames = ['happy-a.fcs', 'happy-b.fcs'];
+          const happyPaths = happyNames.map((name) => `sessions/${cache.runtime_session_id}/files/${name}`);
+          for (let i = 0; i < happyNames.length; i++) {
+            const file = new File([new Uint8Array([i + 1, i + 2, i + 3])], happyNames[i]);
+            const identity = await cache.copy_file_to_opfs(file, happyPaths[i]);
+            cache.catalogue_cached_record({
+              id: `happy-${i}`, opfs_path: happyPaths[i], size: file.size, ...identity,
+            });
+          }
+          let allExistBeforeReset = true;
+          for (const path of happyPaths) {
+            try { await opfs.read_file_from_opfs(path); } catch (_) { allExistBeforeReset = false; }
+          }
+          const happyResetSummary = await sessionCore.release_active_session_cache();
+          let noneExistAfterReset = true;
+          for (const path of happyPaths) {
+            try { await opfs.read_file_from_opfs(path); noneExistAfterReset = false; } catch (_) {}
+          }
+          const indexAfterReset = cache.read_cache_index().entries;
+          const catalogueClearedAfterReset = happyPaths.every((path) => !indexAfterReset[path]);
+          push('READY-03/STATE-05: Reset actually removes every real owned OPFS file, not just a success report',
+            allExistBeforeReset && happyResetSummary.all_removed === true
+            && happyResetSummary.sessions_dir_removed === true
+            && happyResetSummary.results.length >= 2
+            && happyResetSummary.results.every((r) => r.removed || r.shared)
+            && noneExistAfterReset && catalogueClearedAfterReset,
+            JSON.stringify({ allExistBeforeReset, happyResetSummary, noneExistAfterReset, catalogueClearedAfterReset }));
+
           // STATE-05: a real (not mocked) deletion failure -- a cache entry
           // catalogued under this session whose OPFS file was never actually
           // written -- must surface through core.js's real reset path rather
@@ -641,6 +713,76 @@ def run_session_tests(ctx: TestContext):
             && Boolean(phantomEntryAfter) && phantomEntryAfter.owners.length === 0
             && Boolean(phantomEntryAfter.cleanup_failed_at),
             JSON.stringify({ resetSummary, phantomEntryAfter }));
+
+          // STATE-05 / AUDIT-014: live mid-session cache-clear/eviction drill.
+          // Exercises the full disaster-recovery lifecycle:
+          // 1) Write and catalogue an authentic FCS copy in OPFS.
+          // 2) Simulate an OPFS wipe / storage eviction mid-session.
+          // 3) Verify that try_load_from_opfs detects the evicted file as missing.
+          // 4) Verify that attempting recovery with CHANGED file contents
+          //    (matching size & name but different bytes) detects a digest
+          //    mismatch, marks the record 'mismatch', and rejects the file.
+          // 5) Verify that recovery with MATCHING file contents succeeds,
+          //    marks the record 'available', and re-caches it to a fresh OPFS path.
+          const evictPath = `sessions/evict-${Date.now()}/files/drill.fcs`;
+          const evictBytes = new Uint8Array([11, 22, 33, 44, 55, 66, 77, 88]);
+          const evictFile = new File([evictBytes], 'drill.fcs');
+          const evictCopied = await cache.copy_file_to_opfs(evictFile, evictPath);
+          const evictRecord = {
+            id: 'evict-test-1',
+            original_name: 'drill.fcs',
+            size: evictBytes.byteLength,
+            last_modified: 1700000000000,
+            opfs_path: evictPath,
+            digest_algorithm: evictCopied.digest_algorithm,
+            digest: evictCopied.digest,
+            status: 'available',
+          };
+          cache.catalogue_cached_record(evictRecord, 'evict-owner');
+
+          let existsBeforeEvict = false;
+          try {
+            const f = await opfs.read_file_from_opfs(evictPath);
+            existsBeforeEvict = f.size === evictBytes.byteLength;
+          } catch (_) {}
+
+          // Simulate live mid-session OPFS eviction
+          await opfs.delete_opfs_path(evictPath);
+          let existsAfterEvict = false;
+          try {
+            await opfs.read_file_from_opfs(evictPath);
+            existsAfterEvict = true;
+          } catch (_) {}
+
+          // try_load_from_opfs detects the missing file
+          const restoreAfterEvict = await reconnect.try_load_from_opfs([evictRecord]);
+          const detectedMissing = restoreAfterEvict.missing.length === 1
+            && restoreAfterEvict.found.length === 0
+            && evictRecord.status === 'missing';
+
+          // Reconnect with CHANGED file contents (same size, altered bytes)
+          const changedBytes = new Uint8Array([99, 88, 77, 66, 55, 44, 33, 22]);
+          const changedFile = new File([changedBytes], 'drill.fcs', { lastModified: 1700000000000 });
+          reconnect.open_reconnect_modal([evictRecord]);
+          await reconnect.apply_reconnected_files([changedFile]);
+          const mismatchRejected = evictRecord.status === 'mismatch';
+
+          // Reconnect with MATCHING file contents
+          const matchingFile = new File([evictBytes], 'drill.fcs', { lastModified: 1700000000000 });
+          await reconnect.apply_reconnected_files([matchingFile]);
+          const matchingAccepted = evictRecord.status === 'available'
+            && evictRecord.opfs_path !== evictPath;
+          let recachedInOpfs = false;
+          try {
+            const reloaded = await opfs.read_file_from_opfs(evictRecord.opfs_path);
+            recachedInOpfs = reloaded.size === evictBytes.byteLength;
+          } catch (_) {}
+          reconnect.close_reconnect_modal();
+          await opfs.delete_opfs_path(evictRecord.opfs_path);
+
+          push('STATE-05: AUDIT-014 live cache-clear/eviction drill detects missing files, rejects changed contents, and recovers with matching contents',
+            existsBeforeEvict && !existsAfterEvict && detectedMissing && mismatchRejected && matchingAccepted && recachedInOpfs,
+            JSON.stringify({ existsBeforeEvict, existsAfterEvict, detectedMissing, mismatchRejected, matchingAccepted, recachedInOpfs }));
         } finally {
           await opfs.delete_opfs_path(path);
           await opfs.delete_opfs_path(partialPath);

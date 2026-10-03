@@ -30,9 +30,16 @@ function optional_boolean(value, path) {
   if (value != null && typeof value !== 'boolean') fail(path, 'a boolean');
 }
 
-function optional_layout_number(value, path, minimum) {
-  if (value != null && (!Number.isFinite(value) || value < minimum || value > 100000)) {
-    fail(path, `a finite number from ${minimum} to 100000`);
+// Layout sizes are cosmetic: a non-number is rejected, but an out-of-range
+// number (e.g. a 0 px panel height saved by an older build) is dropped so the
+// default layout applies instead of failing the whole session load.
+function optional_layout_number(ui, key, minimum) {
+  const value = ui[key];
+  if (value == null) return;
+  if (!Number.isFinite(value)) fail(`ui.${key}`, 'a finite number');
+  if (value < minimum || value > 100000) {
+    console.warn(`Session field "ui.${key}" = ${value} is outside ${minimum}-100000; using the default layout.`);
+    delete ui[key];
   }
 }
 
@@ -163,9 +170,9 @@ export function validate_session_draft(parsed) {
     optional_boolean(ui.sidebar_collapsed, 'ui.sidebar_collapsed');
     optional_boolean(ui.plot_panel_collapsed, 'ui.plot_panel_collapsed');
     optional_boolean(ui.metadata_panel_collapsed, 'ui.metadata_panel_collapsed');
-    optional_layout_number(ui.sidebar_width_px, 'ui.sidebar_width_px', 150);
-    optional_layout_number(ui.plot_panel_height_px, 'ui.plot_panel_height_px', 50);
-    optional_layout_number(ui.metadata_panel_height_px, 'ui.metadata_panel_height_px', 50);
+    optional_layout_number(ui, 'sidebar_width_px', 150);
+    optional_layout_number(ui, 'plot_panel_height_px', 50);
+    optional_layout_number(ui, 'metadata_panel_height_px', 50);
   }
   if (parsed.stats_plan) object(parsed.stats_plan, 'stats_plan');
   if (parsed.structural_qc) object(parsed.structural_qc, 'structural_qc');
